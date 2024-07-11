@@ -208,7 +208,7 @@ runs:
       shell: bash
       if: inputs.application-yaml-path == ''
       run: |
-        echo "CONFIG_PARAM=--spring.config.location='GITHUB_ACTION_PATH/cxflow-defaults.yml'" >> "$GITHUB_ENV"
+        echo "CONFIG_PARAM=--spring.config.location='$GITHUB_ACTION_PATH/cxflow-defaults.yml'" >> "$GITHUB_ENV"
 
     - name: Set params for PR
       shell: bash
