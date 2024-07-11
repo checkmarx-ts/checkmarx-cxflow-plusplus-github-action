@@ -217,7 +217,7 @@ runs:
       shell: bash
       run: |
         pwd
-        ls -l
+        ls -lR /home/runner
 
 
     - name: Set params for PR
