@@ -163,21 +163,25 @@ runs:
       run: | 
 
         if [ "${{ inputs.cxflow-version }}" == "latest" ]; then
-
           CXFLOW_JAR=$(curl -s https://api.github.com/repos/checkmarx-ltd/cx-flow/releases/latest | \
             jq ".assets[].browser_download_url" | \
-            grep java11 | \
-            sed -r 's/.?http.*\/(.+java11.jar).?$/\1/g')
+            sed -r 's/.?http.*\/(.+\.jar).?$/\1/g')
 
-          CXFLOW_VERSION=$(echo $CXFLOW_JAR | sed -r 's/cx-flow-(.+)-java11.jar/\1/g')
+          CXFLOW_VERSION=$(echo $CXFLOW_JAR | sed -r 's/cx-flow-(.+).jar/\1/g')
         else
-          export CXFLOW_VERSION=${{ inputs.cxflow-version }}
-          export CXFLOW_JAR=cx-flow-$CXFLOW_VERSION-java11.jar
+          CXFLOW_VERSION=${{ inputs.cxflow-version }}
+          CXFLOW_JAR=$(curl -s https://api.github.com/repos/checkmarx-ltd/cx-flow/releases | \
+            jq ".[].assets[].browser_download_url" | \
+            grep -E "$CXFLOW_VERSION(-java11)?.jar" | \
+            head -n 1 | \
+            sed -r 's/.?http.*\/(.+(-java11)?.jar).?$/\1/g')
+
         fi
 
         echo "CXFLOW_VERSION=$CXFLOW_VERSION" >> "$GITHUB_ENV"
         echo "CXFLOW_JAR=$CXFLOW_JAR" >> "$GITHUB_ENV"
         echo "CXFLOW_FOLDER=$(realpath ../cxflow-$GITHUB_REPOSITORY_OWNER)" >> "$GITHUB_ENV"
+        echo Using CxFlow JAR: $CXFLOW_JAR
 
 
     - name: Downloading CxFlow
