@@ -217,7 +217,7 @@ runs:
       shell: bash
       run: |
         pwd
-        ls -lR /home/runner
+        find / -name "cxflow-defaults.yml" -print 2> /dev/null
 
 
     - name: Set params for PR
