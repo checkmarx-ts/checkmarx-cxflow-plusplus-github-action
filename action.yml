@@ -110,11 +110,8 @@ inputs:
     description: Path to a file or directory containing a custom CA cert chain that is imported into the Java runtime cacerts store. 
 
   # For development purposes only - not documented.
-  action-root:
-    default: .
-    description: The root directory containing the action artifacts.
   action-artifact-path:
-    default: .
+    default:
     description: The path under the root directory where the action artifacts can be found.
 
 outputs:
@@ -211,16 +208,7 @@ runs:
       shell: bash
       if: inputs.application-yaml-path == ''
       run: |
-        echo "CONFIG_PARAM=--spring.config.location='${{ inputs.action-root }}/${{ inputs.action-artifact-path}}/cxflow-defaults.yml'" >> "$GITHUB_ENV"
-
-    - name: FOO
-      shell: bash
-      run: |
-        pwd
-        find /home/runner -name "cxflow-defaults.yml" -print 2> /dev/null
-        env
-        
-
+        echo "CONFIG_PARAM=--spring.config.location='${{ env.GITHUB_ACTION_PATH }}/cxflow-defaults.yml'" >> "$GITHUB_ENV"
 
     - name: Set params for PR
       shell: bash
@@ -262,7 +250,7 @@ runs:
       shell: bash
       if: inputs.scaresolver-tag != ''
       run: |
-        echo "SCA_RESOLVER_CONFIG=--sca.enable-sca-resolver=true --sca.path-to-sca-resolver='${{ inputs.action-root }}/${{ inputs.action-artifact-path}}/'" >> "$GITHUB_ENV"
+        echo "SCA_RESOLVER_CONFIG=--sca.enable-sca-resolver=true --sca.path-to-sca-resolver='${{ env.GITHUB_ACTION_PATH }}/'" >> "$GITHUB_ENV"
 
 
     - name: Set Sarif File Path
