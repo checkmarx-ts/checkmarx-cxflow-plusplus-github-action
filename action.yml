@@ -114,7 +114,7 @@ inputs:
     default: .
     description: The root directory containing the action artifacts.
   action-artifact-path:
-    default:
+    default: .
     description: The path under the root directory where the action artifacts can be found.
 
 outputs:
@@ -212,6 +212,12 @@ runs:
       if: inputs.application-yaml-path == ''
       run: |
         echo "CONFIG_PARAM=--spring.config.location='${{ inputs.action-root }}/${{ inputs.action-artifact-path}}/cxflow-defaults.yml'" >> "$GITHUB_ENV"
+
+    - name: FOO
+      shell: bash
+      run: |
+        pwd
+        ls -l
 
 
     - name: Set params for PR
