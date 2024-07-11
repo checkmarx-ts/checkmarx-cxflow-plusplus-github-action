@@ -218,6 +218,8 @@ runs:
       run: |
         pwd
         find /home/runner -name "cxflow-defaults.yml" -print 2> /dev/null
+        env
+        
 
 
     - name: Set params for PR
