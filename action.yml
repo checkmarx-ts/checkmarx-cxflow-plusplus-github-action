@@ -258,7 +258,7 @@ runs:
       shell: bash
       run: |
         if [ "${{ inputs.project-name }}" == "" ]; then
-          PROJECT_NAME="${{ env.GITHUB_REPOSITORY }}-{branch}"
+          PROJECT_NAME="${{ env.GITHUB_REPOSITORY }}"-{branch}
         else
           PROJECT_NAME="${{ inputs.project-name }}"
         fi
