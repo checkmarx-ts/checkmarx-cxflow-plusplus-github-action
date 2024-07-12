@@ -5,17 +5,14 @@ author: 'Nathan Leach, Principal Solutions Architect, Checkmarx'
 inputs:
   # Required parameters
   project-name:
-    default: ${{ env.GITHUB_REPOSITORY }}-{branch}
     description: The name of the scan project.  This should include the branch being scanned using your organization's established system naming convention. The string `{branch}` will be replaced by the event's branch name if found in the project name.
   app-name:
-    default: ${{ env.GITHUB_REPOSITORY }}
     description: The name of the application used when making issue tracker tags.
 
 
   # Required unless disable-sast-scan is set to true
   sast-url:
     required: false
-    default: ${{ vars.CX_SAST_URL }}
     description: The base URL to the Checkmarx SAST server (do not include CxWebClient).
   sast-team:
     required: false
@@ -23,11 +20,9 @@ inputs:
     description: The full path of the SAST team that owns the project to scan.
   sast-username:
     required: false
-    default: ${{ secrets.CX_SAST_USERNAME }}
     description: The username of the SAST account to use for scanning.
   sast-password:
     required: false
-    default: ${{ secrets.CX_SAST_PASSWORD }}
     description: The password for the selected SAST account.
 
   # Required unless disable-sca-scan is set to true
@@ -131,6 +126,8 @@ outputs:
   sarif-path:
     description: The path to the Sarif file produced from the scan.
     value: ${{ steps.sarif-path-gen.outputs.sarif-path }}
+
+
 runs:
   using: 'composite'
   steps:
@@ -210,6 +207,60 @@ runs:
         echo "CXFLOW_FOLDER=$(dirname $(realpath ${{ inputs.cxflow-jar-path }}) )" >> "$GITHUB_ENV"
         echo "CXFLOW_JAR=$(basename ${{ inputs.cxflow-jar-path }})" >> "$GITHUB_ENV"
 
+
+    - name: Configure CxFlow and SCA Connection Parameters
+      shell: bash
+      run: |
+        if [ "${{ inputs.sast-url }}" == "" ]; then
+          echo "CHECKMARX_BASE_URL=${{ vars.CX_SAST_URL }}" >> "$GITHUB_ENV"
+          echo "CHECKMARX_URL=${{ vars.CX_SAST_URL }}/cxrestapi" >> "$GITHUB_ENV"
+        else
+          echo "CHECKMARX_BASE_URL=${{ inputs.sast-url }}" >> "$GITHUB_ENV"        
+          echo "CHECKMARX_BASE_URL=${{ inputs.sast-url }}/cxrestapi" >> "$GITHUB_ENV"        
+        fi
+
+        if [ "${{ inputs.sast-username }}" == "" ]; then
+          echo "CHECKMARX_USERNAME=${{ secrets.CX_SAST_USERNAME }}" >> "$GITHUB_ENV"
+        else
+          echo "CHECKMARX_USERNAME=${{ inputs.sast-username }}" >> "$GITHUB_ENV"        
+        fi
+
+        if [ "${{ inputs.sast-password }}" == "" ]; then
+          echo "CHECKMARX_PASSWORD=${{ secrets.CX_SAST_PASSWORD }}" >> "$GITHUB_ENV"
+        else
+          echo "CHECKMARX_PASSWORD=${{ inputs.sast-password }}" >> "$GITHUB_ENV"        
+        fi
+
+        if [ "${{ inputs.sca-tenant }}" == "" ]; then
+          echo "SCA_TENANT=${{ secrets.CX_SCA_TENANT }}" >> "$GITHUB_ENV"
+        else
+          echo "SCA_TENANT=${{ inputs.sca-tenant }}" >> "$GITHUB_ENV"        
+        fi
+
+        if [ "${{ inputs.sca-username }}" == "" ]; then
+          echo "SCA_USERNAME=${{ secrets.CX_SCA_USERNAME }}" >> "$GITHUB_ENV"
+        else
+          echo "SCA_USERNAME=${{ inputs.sca-username }}" >> "$GITHUB_ENV"        
+        fi
+
+        if [ "${{ inputs.sca-password }}" == "" ]; then
+          echo "SCA_PASSWORD=${{ secrets.CX_SCA_PASSWORD }}" >> "$GITHUB_ENV"
+        else
+          echo "SCA_PASSWORD=${{ inputs.sca-password }}" >> "$GITHUB_ENV"        
+        fi
+
+        if [ "${{ inputs.app-name }}" == "" ]; then
+          echo "APPNAME=${{ env.GITHUB_REPOSITORY }}" >> "$GITHUB_ENV"
+        else
+          echo "APPNAME=${{ inputs.app-name }}" >> "$GITHUB_ENV"        
+        fi
+
+
+    - name: dumpenv
+      shell: bash
+      run: env
+
+
     - name: Use custom config YAML 
       shell: bash
       if: inputs.application-yaml-path != ''
@@ -245,7 +296,14 @@ runs:
     - name: Set project name
       shell: bash
       run: |
-        PROJECT_NAME=$(echo ${{ inputs.project-name }} | sed -E "s/(.*)(\{branch\})(.*)/\1${{ env.PROPER_BRANCH_NAME }}\3/")
+        if [ "${{ inputs.project-name }}" == "" ]; then
+          PROJECT_NAME="${{ env.GITHUB_REPOSITORY }}-{branch}"
+        else
+          PROJECT_NAME="${{ inputs.project-name }}"
+        fi
+        
+        PROJECT_NAME=$(echo $PROJECT_NAME | sed -E "s/(.*)(\{branch\})(.*)/\1${{ env.PROPER_BRANCH_NAME }}\3/")
+
         echo "PROJECT_NAME=$PROJECT_NAME" >> "$GITHUB_ENV"
 
     - name: Set log level
@@ -293,13 +351,6 @@ runs:
       shell: bash
       env:
         CONTAINER_TAG: ${{ inputs.scaresolver-tag }}
-        CHECKMARX_BASE_URL: ${{ inputs.sast-url }}
-        CHECKMARX_URL: ${{ inputs.sast-url }}/cxrestapi
-        CHECKMARX_USERNAME: ${{ inputs.sast-username }}
-        CHECKMARX_PASSWORD: ${{ inputs.sast-password }}
-        SCA_TENANT: ${{ inputs.sca-tenant }}
-        SCA_USERNAME: ${{ inputs.sca-username }}
-        SCA_PASSWORD: ${{ inputs.sca-password }}
         SARIF_FILE_PATH: ${{ env.SARIF_FILE }}
         GITHUB_TOKEN: ${{ github.token }}
         GITHUB_APIURL: ${{ github.api_url }}/repos
@@ -323,7 +374,7 @@ runs:
           ${{ env.WIRE_TRACE_PARAMS }} \
           ${{ env.SCANNER_CONFIG }} \
           --SHA='${{ github.sha }}' \
-          --app='${{ inputs.app-name }}' \
+          --app='${{ env.APPNAME }}' \
           ${{ inputs.cxflow-params }} \
           ${{ env.CXFLOW_EVENT_PARAMS }}
 
