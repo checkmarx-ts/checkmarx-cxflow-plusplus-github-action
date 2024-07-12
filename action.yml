@@ -285,9 +285,16 @@ runs:
 
     - name: Set SCAResolver parameters
       shell: bash
-      if: inputs.scaresolver-tag == '' && inputs.scaresolver-local-path != ''
+      if: inputs.scaresolver-tag == '' 
       run: |
-        echo "SCA_RESOLVER_CONFIG=--sca.enable-sca-resolver=true --sca.path-to-sca-resolver='${{ inputs.scaresolver-local-path }}'" >> "$GITHUB_ENV"
+        if [ "${{ inputs.scaresolver-local-path }}" == "" ]; then
+          RESOLVER=$(dirname $(which ScaResolver) )
+        else
+          RESOLVER=$(realpath "${{ inputs.scaresolver-local-path }}")
+        fi
+        
+        echo "SCA_RESOLVER_CONFIG=--sca.enable-sca-resolver=true --sca.path-to-sca-resolver='$RESOLVER'" >> "$GITHUB_ENV"
+
 
 
     - name: Set Sarif File Path
@@ -305,15 +312,6 @@ runs:
         [[ "${{ inputs.disable-sast-scan }}" == "false" ]] && SCANNERS="sast," || :
         [[ "${{ inputs.disable-sca-scan }}" == "false" ]] && SCANNERS="${SCANNERS}sca" || :
         echo "SCANNER_CONFIG=--cx-flow.enabled-vulnerability-scanners='${SCANNERS}'" >> "$GITHUB_ENV"
-
-
-
-
-    - name: dumpenv
-      shell: bash
-      run: env
-
-
 
 
     - name: Orchestrate scans with CxFlow
