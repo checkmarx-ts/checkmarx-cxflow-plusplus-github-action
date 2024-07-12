@@ -240,7 +240,7 @@ runs:
 
     - name: Set params for push
       shell: bash
-      if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+      if: github.event_name != 'pull_request'
       run: |
         echo "CXFLOW_FEEDBACK_CHANNEL=${{ inputs.push-feedback-channel }}" >> "$GITHUB_ENV"
         echo "CXFLOW_FEEDBACK_PARAMS=--bug-tracker='${{ inputs.push-feedback-channel }}'" >> "$GITHUB_ENV"
