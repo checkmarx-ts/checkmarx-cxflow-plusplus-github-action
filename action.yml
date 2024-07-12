@@ -209,7 +209,7 @@ runs:
       shell: bash
       run: |
         echo "CHECKMARX_BASE_URL=${{ inputs.sast-url }}" >> "$GITHUB_ENV"        
-        echo "CHECKMARX_BASE_URL=${{ inputs.sast-url }}/cxrestapi" >> "$GITHUB_ENV"        
+        echo "CHECKMARX_URL=${{ inputs.sast-url }}/cxrestapi" >> "$GITHUB_ENV"        
         echo "CHECKMARX_USERNAME=${{ inputs.sast-username }}" >> "$GITHUB_ENV"        
         echo "CHECKMARX_PASSWORD=${{ inputs.sast-password }}" >> "$GITHUB_ENV"        
         echo "SCA_TENANT=${{ inputs.sca-tenant }}" >> "$GITHUB_ENV"        
@@ -263,12 +263,7 @@ runs:
           PROJECT_NAME="${{ inputs.project-name }}"
         fi
 
-        echo RAW PROJECT_NAME: $PROJECT_NAME
-        
         PROJECT_NAME=$(echo $PROJECT_NAME | sed -E "s/(.*)(\{branch\})(.*)/\1${{ env.PROPER_BRANCH_NAME }}\3/")
-
-        echo ADJUSTED PROJECT_NAME: $PROJECT_NAME
-
         echo "PROJECT_NAME=$PROJECT_NAME" >> "$GITHUB_ENV"
 
     - name: Set log level
