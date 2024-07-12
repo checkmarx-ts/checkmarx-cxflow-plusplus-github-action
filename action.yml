@@ -314,6 +314,7 @@ runs:
         CHECKMARX_BASE_URL: ${{ inputs.sast-url }}
         CHECKMARX_URL: ${{ inputs.sast-url }}/cxrestapi
         CHECKMARX_USERNAME: ${{ inputs.sast-username }}
+        CHECKMARX_PASSWORD: ${{ inputs.sast-password }}
         SCA_TENANT: ${{ inputs.sca-tenant }}
         SCA_USERNAME: ${{ inputs.sca-username }}
         SCA_PASSWORD: ${{ inputs.sca-password }}
