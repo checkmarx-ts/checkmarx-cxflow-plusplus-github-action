@@ -209,8 +209,8 @@ runs:
       shell: bash
       run: |
         if [ "${{ inputs.sast-url }}" == "" ]; then
-          echo "CHECKMARX_BASE_URL=${{ vars.CX_SAST_URL }}" >> "$GITHUB_ENV"
-          echo "CHECKMARX_URL=${{ vars.CX_SAST_URL }}/cxrestapi" >> "$GITHUB_ENV"
+          echo "CHECKMARX_BASE_URL=${{ secrets.CX_SAST_URL }}" >> "$GITHUB_ENV"
+          echo "CHECKMARX_URL=${{ secrets.CX_SAST_URL }}/cxrestapi" >> "$GITHUB_ENV"
         else
           echo "CHECKMARX_BASE_URL=${{ inputs.sast-url }}" >> "$GITHUB_ENV"        
           echo "CHECKMARX_BASE_URL=${{ inputs.sast-url }}/cxrestapi" >> "$GITHUB_ENV"        
