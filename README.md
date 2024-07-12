@@ -21,9 +21,6 @@ the minimal required parameters:
   uses:  checkmarx-ts/checkmarx-cxflow-github-pp-action@v1
   with:
     sast-url: https://...
-    sast-team: /CxServer/...
-    project-name: myproject-{branch}
-    app-name: MyProject
     sast-username: ${{ secrets.<YOUR VALUE HERE> }}
     sast-password: ${{ secrets.<YOUR VALUE HERE> }}
     sca-tenant: ${{ secrets.<YOUR VALUE HERE> }}
@@ -74,15 +71,15 @@ docker build -t your_tag_here \
 
 # Configuration Parameters
 
-## Required Parameters
+## Scan Parameters
 
-* `app-name`: The name of the application used when making issue tracker tags.
-* `project-name`: The name of the scan project.  This should include the branch being scanned using your organization's established system naming convention. The string `{branch}` will be replaced by the event's branch name if found in the project name.
+* `app-name`: The name of the application used when making issue tracker tags. Default: `$GITHUB_REPOSITORY`
+* `project-name`: The name of the scan project.  This should include the branch being scanned using your organization's established system naming convention. The string `{branch}` will be replaced by the event's branch name if found in the project name. Default: `$GITHUB_REPOSITORY-{branch}`
 
 
 **Required unless `disable-sast-scan` is set to `true`**
 * `sast-url`: The base URL to the Checkmarx SAST server (do not include `CxWebClient`).
-* `sast-team`: The full path of the SAST team that owns the project to scan.
+* `sast-team`: The full path of the SAST team that owns the project to scan. Default: `/CxServer`
 * `sast-username`: The username of the SAST account to use for scanning.
 * `sast-password`: The password for the selected SAST account.
 
@@ -120,7 +117,7 @@ docker build -t your_tag_here \
 * `sast-log-level`: (default: INFO) The logging level for CxFlow output emitted as the action executes. (TRACE, DEBUG, ERROR, INFO)
 * `push-feedback-channel`: (default: Sarif) The feedback channel to use when scanning for a push.
 * `pull-request-feedback-channel`: (default: GITHUBPULL) The feedback channel to use when scanning for a pull request.
-* `application-yaml-path`: (default: blank) A path to a CxFlow yaml configuration file.
+* `application-yaml-path`: (default: `$GITHUB_ACTION_PATH/cxflow-defaults.yml`) A path to a CxFlow yaml configuration file.
 * `scaresolver-tag`: (default: blank) The tag for the containerized SCAResolver build environment where the action will execute dependency scanning.  The image must not be built with a `*-bare` target. If this is not supplied, the SCA dependency scan will execute on the SCA server.
 
 ### Java Parameters

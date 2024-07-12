@@ -217,7 +217,7 @@ runs:
         echo "SCA_PASSWORD=${{ inputs.sca-password }}" >> "$GITHUB_ENV"        
 
         if [ "${{ inputs.app-name }}" == "" ]; then
-          echo "APPNAME=${{ env.GITHUB_REPOSITORY }}" >> "$GITHUB_ENV"
+          echo "APPNAME=$GITHUB_REPOSITORY" >> "$GITHUB_ENV"
         else
           echo "APPNAME=${{ inputs.app-name }}" >> "$GITHUB_ENV"        
         fi
