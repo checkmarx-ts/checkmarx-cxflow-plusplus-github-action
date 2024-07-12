@@ -222,12 +222,6 @@ runs:
           echo "APPNAME=${{ inputs.app-name }}" >> "$GITHUB_ENV"        
         fi
 
-
-    - name: dumpenv
-      shell: bash
-      run: env
-
-
     - name: Use custom config YAML 
       shell: bash
       if: inputs.application-yaml-path != ''
@@ -268,8 +262,12 @@ runs:
         else
           PROJECT_NAME="${{ inputs.project-name }}"
         fi
+
+        echo RAW PROJECT_NAME: $PROJECT_NAME
         
         PROJECT_NAME=$(echo $PROJECT_NAME | sed -E "s/(.*)(\{branch\})(.*)/\1${{ env.PROPER_BRANCH_NAME }}\3/")
+
+        echo ADJUSTED PROJECT_NAME: $PROJECT_NAME
 
         echo "PROJECT_NAME=$PROJECT_NAME" >> "$GITHUB_ENV"
 
@@ -312,6 +310,16 @@ runs:
         [[ "${{ inputs.disable-sast-scan }}" == "false" ]] && SCANNERS="sast," || :
         [[ "${{ inputs.disable-sca-scan }}" == "false" ]] && SCANNERS="${SCANNERS}sca" || :
         echo "SCANNER_CONFIG=--cx-flow.enabled-vulnerability-scanners='${SCANNERS}'" >> "$GITHUB_ENV"
+
+
+
+
+    - name: dumpenv
+      shell: bash
+      run: env
+
+
+
 
     - name: Orchestrate scans with CxFlow
       if: inputs.disable-sast-scan == 'false' || inputs.disable-sca-scan == 'false'
