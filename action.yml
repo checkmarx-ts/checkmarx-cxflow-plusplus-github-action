@@ -5,36 +5,43 @@ author: 'Nathan Leach, Principal Solutions Architect, Checkmarx'
 inputs:
   # Required parameters
   project-name:
-    required: true
+    default: ${{ env.GITHUB_REPOSITORY }}-{branch}
     description: The name of the scan project.  This should include the branch being scanned using your organization's established system naming convention. The string `{branch}` will be replaced by the event's branch name if found in the project name.
   app-name:
-    required: true
+    default: ${{ env.GITHUB_REPOSITORY }}
     description: The name of the application used when making issue tracker tags.
 
 
   # Required unless disable-sast-scan is set to true
   sast-url:
     required: false
+    default: ${{ vars.CX_SAST_URL }}
     description: The base URL to the Checkmarx SAST server (do not include CxWebClient).
   sast-team:
     required: false
+    default: /CxServer
     description: The full path of the SAST team that owns the project to scan.
   sast-username:
     required: false
+    default: ${{ secrets.CX_SAST_USERNAME }}
     description: The username of the SAST account to use for scanning.
   sast-password:
     required: false
+    default: ${{ secrets.CX_SAST_PASSWORD }}
     description: The password for the selected SAST account.
 
   # Required unless disable-sca-scan is set to true
   sca-tenant:
     required: false
+    default: ${{ secrets.CX_SCA_TENANT }}
     description: The name of the SCA tenant.
   sca-username:
     required: false
+    default: ${{ secrets.CX_SCA_USERNAME }}
     description: The username of the SCA account to use for scanning.
   sca-password:
     required: false
+    default: ${{ secrets.CX_SCA_PASSWORD }}
     description: The password for the selected SCA account.
 
   # Optional parameters
@@ -99,9 +106,15 @@ inputs:
   application-yaml-path:
     default: ''
     description: A path to a CxFlow yaml configuration file.
+  build-container-tag:
+    default: ''
+    description: Set the the tag of the container used to perform the code build.  SCA Resolver will execute in an instance of this container to obtain an accurate dependency tree.
   scaresolver-tag:
     default: ''
     description: The tag for the containerized SCAResolver build environment where the action will execute dependency scanning.  The image must not be built with a *-bare target. If this is not supplied, the SCA dependency scan will execute on the SCA server.
+  scaresolver-local-path:
+    default: ''
+    description: Used only when executing on a self-hosted runner.  The path to the folder containing the SCA Resolver install.  This can be left blank if the SCA Resolver is on the PATH.
   spring-props:
     default: ''
     description: Spring boot properties to pass to the JVM.
@@ -252,6 +265,12 @@ runs:
       run: |
         echo "SCA_RESOLVER_CONFIG=--sca.enable-sca-resolver=true --sca.path-to-sca-resolver='${{ env.GITHUB_ACTION_PATH }}/'" >> "$GITHUB_ENV"
 
+    - name: Set SCAResolver parameters
+      shell: bash
+      if: inputs.scaresolver-tag == '' && inputs.scaresolver-local-path != ''
+      run: |
+        echo "SCA_RESOLVER_CONFIG=--sca.enable-sca-resolver=true --sca.path-to-sca-resolver='${{ inputs.scaresolver-local-path }}'" >> "$GITHUB_ENV"
+
 
     - name: Set Sarif File Path
       id: sarif-path-gen
@@ -268,12 +287,6 @@ runs:
         [[ "${{ inputs.disable-sast-scan }}" == "false" ]] && SCANNERS="sast," || :
         [[ "${{ inputs.disable-sca-scan }}" == "false" ]] && SCANNERS="${SCANNERS}sca" || :
         echo "SCANNER_CONFIG=--cx-flow.enabled-vulnerability-scanners='${SCANNERS}'" >> "$GITHUB_ENV"
-
-
-    - name: Prune deleted containers on self-hosted runner
-      if: ${{ !startsWith(runner.name, 'GitHub') }}
-      shell: bash
-      run: docker system prune -f
 
     - name: Orchestrate scans with CxFlow
       if: inputs.disable-sast-scan == 'false' || inputs.disable-sca-scan == 'false'
