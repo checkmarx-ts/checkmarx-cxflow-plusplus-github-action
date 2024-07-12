@@ -205,16 +205,9 @@ runs:
         echo "CXFLOW_JAR=$(basename ${{ inputs.cxflow-jar-path }})" >> "$GITHUB_ENV"
 
 
-    - name: Configure CxFlow and SCA Connection Parameters
+    - name: Setup App Name
       shell: bash
       run: |
-        echo "CHECKMARX_BASE_URL=${{ inputs.sast-url }}" >> "$GITHUB_ENV"        
-        echo "CHECKMARX_URL=${{ inputs.sast-url }}/cxrestapi" >> "$GITHUB_ENV"        
-        echo "CHECKMARX_USERNAME=${{ inputs.sast-username }}" >> "$GITHUB_ENV"        
-        echo "CHECKMARX_PASSWORD=${{ inputs.sast-password }}" >> "$GITHUB_ENV"        
-        echo "SCA_TENANT=${{ inputs.sca-tenant }}" >> "$GITHUB_ENV"        
-        echo "SCA_USERNAME=${{ inputs.sca-username }}" >> "$GITHUB_ENV"        
-        echo "SCA_PASSWORD=${{ inputs.sca-password }}" >> "$GITHUB_ENV"        
 
         if [ "${{ inputs.app-name }}" == "" ]; then
           echo "APPNAME=$GITHUB_REPOSITORY" >> "$GITHUB_ENV"
@@ -318,6 +311,12 @@ runs:
       if: inputs.disable-sast-scan == 'false' || inputs.disable-sca-scan == 'false'
       shell: bash
       env:
+        CHECKMARX_BASE_URL: ${{ inputs.sast-url }}
+        CHECKMARX_URL: ${{ inputs.sast-url }}/cxrestapi
+        CHECKMARX_USERNAME: ${{ inputs.sast-username }}
+        SCA_TENANT: ${{ inputs.sca-tenant }}
+        SCA_USERNAME: ${{ inputs.sca-username }}
+        SCA_PASSWORD: ${{ inputs.sca-password }}
         CONTAINER_TAG: ${{ inputs.scaresolver-tag }}
         SARIF_FILE_PATH: ${{ env.SARIF_FILE }}
         GITHUB_TOKEN: ${{ github.token }}
