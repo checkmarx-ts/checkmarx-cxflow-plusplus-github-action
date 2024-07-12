@@ -28,15 +28,12 @@ inputs:
   # Required unless disable-sca-scan is set to true
   sca-tenant:
     required: false
-    default: ${{ secrets.CX_SCA_TENANT }}
     description: The name of the SCA tenant.
   sca-username:
     required: false
-    default: ${{ secrets.CX_SCA_USERNAME }}
     description: The username of the SCA account to use for scanning.
   sca-password:
     required: false
-    default: ${{ secrets.CX_SCA_PASSWORD }}
     description: The password for the selected SCA account.
 
   # Optional parameters
