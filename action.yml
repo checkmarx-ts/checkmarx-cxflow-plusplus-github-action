@@ -208,43 +208,13 @@ runs:
     - name: Configure CxFlow and SCA Connection Parameters
       shell: bash
       run: |
-        if [ "${{ inputs.sast-url }}" == "" ]; then
-          echo "CHECKMARX_BASE_URL=${{ secrets.CX_SAST_URL }}" >> "$GITHUB_ENV"
-          echo "CHECKMARX_URL=${{ secrets.CX_SAST_URL }}/cxrestapi" >> "$GITHUB_ENV"
-        else
-          echo "CHECKMARX_BASE_URL=${{ inputs.sast-url }}" >> "$GITHUB_ENV"        
-          echo "CHECKMARX_BASE_URL=${{ inputs.sast-url }}/cxrestapi" >> "$GITHUB_ENV"        
-        fi
-
-        if [ "${{ inputs.sast-username }}" == "" ]; then
-          echo "CHECKMARX_USERNAME=${{ secrets.CX_SAST_USERNAME }}" >> "$GITHUB_ENV"
-        else
-          echo "CHECKMARX_USERNAME=${{ inputs.sast-username }}" >> "$GITHUB_ENV"        
-        fi
-
-        if [ "${{ inputs.sast-password }}" == "" ]; then
-          echo "CHECKMARX_PASSWORD=${{ secrets.CX_SAST_PASSWORD }}" >> "$GITHUB_ENV"
-        else
-          echo "CHECKMARX_PASSWORD=${{ inputs.sast-password }}" >> "$GITHUB_ENV"        
-        fi
-
-        if [ "${{ inputs.sca-tenant }}" == "" ]; then
-          echo "SCA_TENANT=${{ secrets.CX_SCA_TENANT }}" >> "$GITHUB_ENV"
-        else
-          echo "SCA_TENANT=${{ inputs.sca-tenant }}" >> "$GITHUB_ENV"        
-        fi
-
-        if [ "${{ inputs.sca-username }}" == "" ]; then
-          echo "SCA_USERNAME=${{ secrets.CX_SCA_USERNAME }}" >> "$GITHUB_ENV"
-        else
-          echo "SCA_USERNAME=${{ inputs.sca-username }}" >> "$GITHUB_ENV"        
-        fi
-
-        if [ "${{ inputs.sca-password }}" == "" ]; then
-          echo "SCA_PASSWORD=${{ secrets.CX_SCA_PASSWORD }}" >> "$GITHUB_ENV"
-        else
-          echo "SCA_PASSWORD=${{ inputs.sca-password }}" >> "$GITHUB_ENV"        
-        fi
+        echo "CHECKMARX_BASE_URL=${{ inputs.sast-url }}" >> "$GITHUB_ENV"        
+        echo "CHECKMARX_BASE_URL=${{ inputs.sast-url }}/cxrestapi" >> "$GITHUB_ENV"        
+        echo "CHECKMARX_USERNAME=${{ inputs.sast-username }}" >> "$GITHUB_ENV"        
+        echo "CHECKMARX_PASSWORD=${{ inputs.sast-password }}" >> "$GITHUB_ENV"        
+        echo "SCA_TENANT=${{ inputs.sca-tenant }}" >> "$GITHUB_ENV"        
+        echo "SCA_USERNAME=${{ inputs.sca-username }}" >> "$GITHUB_ENV"        
+        echo "SCA_PASSWORD=${{ inputs.sca-password }}" >> "$GITHUB_ENV"        
 
         if [ "${{ inputs.app-name }}" == "" ]; then
           echo "APPNAME=${{ env.GITHUB_REPOSITORY }}" >> "$GITHUB_ENV"
