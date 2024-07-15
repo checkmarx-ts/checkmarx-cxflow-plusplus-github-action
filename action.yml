@@ -111,11 +111,6 @@ inputs:
     default: ''
     description: Path to a file or directory containing a custom CA cert chain that is imported into the Java runtime cacerts store. 
 
-  # For development purposes only - not documented.
-  action-artifact-path:
-    default:
-    description: The path under the root directory where the action artifacts can be found.
-
 outputs:
   sarif-path:
     description: The path to the Sarif file produced from the scan.
