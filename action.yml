@@ -280,8 +280,9 @@ runs:
       shell: bash
       if: inputs.scaresolver-tag == '' 
       run: |
-        ls -l ${{ env.GITHUB_ACTION_PATH }}
-        RESOLVER=$($GITHUB_ACTION_PATH/download_resolver.sh)
+        env
+        ls -l $GITHUB_ACTION_PATH
+        RESOLVER=$( "$GITHUB_ACTION_PATH"/download_resolver.sh)
 
         # if [ "${{ inputs.scaresolver-local-path }}" == "" ]; then
         #   RESOLVER=$(dirname $(which ScaResolver) )
