@@ -274,14 +274,14 @@ runs:
       shell: bash
       if: inputs.scaresolver-tag != ''
       run: |
-        echo "SCA_RESOLVER_CONFIG=--sca.enable-sca-resolver=true --sca.path-to-sca-resolver='${{ env.GITHUB_ACTION_PATH }}/'" >> "$GITHUB_ENV"
+        echo "SCA_RESOLVER_CONFIG=--sca.enable-sca-resolver=true --sca.path-to-sca-resolver='$GITHUB_ACTION_PATH/'" >> "$GITHUB_ENV"
 
     - name: Set SCAResolver parameters
       shell: bash
       if: inputs.scaresolver-tag == '' 
       run: |
         ls -l ${{ env.GITHUB_ACTION_PATH }}
-        RESOLVER=$(${{ env.GITHUB_ACTION_PATH }}/download_resolver.sh)
+        RESOLVER=$($GITHUB_ACTION_PATH/download_resolver.sh)
 
         # if [ "${{ inputs.scaresolver-local-path }}" == "" ]; then
         #   RESOLVER=$(dirname $(which ScaResolver) )
