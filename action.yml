@@ -104,9 +104,6 @@ inputs:
   scaresolver-tag:
     default: ''
     description: The tag for the containerized SCAResolver build environment where the action will execute dependency scanning.  The image must not be built with a *-bare target. If this is not supplied, the SCA dependency scan will execute on the SCA server.
-  # scaresolver-local-path:
-  #   default: ''
-  #   description: Used only when executing on a self-hosted runner.  The path to the folder containing the SCA Resolver install.  This can be left blank if the SCA Resolver is on the PATH.
   spring-props:
     default: ''
     description: Spring boot properties to pass to the JVM.
@@ -281,13 +278,6 @@ runs:
       if: inputs.scaresolver-tag == '' 
       run: |
         RESOLVER=$( "$GITHUB_ACTION_PATH"/download_resolver.sh "$GITHUB_ACTION_PATH")
-
-        # if [ "${{ inputs.scaresolver-local-path }}" == "" ]; then
-        #   RESOLVER=$(dirname $(which ScaResolver) )
-        # else
-        #   RESOLVER=$(realpath "${{ inputs.scaresolver-local-path }}")
-        # fi
-        
         echo "SCA_RESOLVER_CONFIG=--sca.enable-sca-resolver=true --sca.path-to-sca-resolver='$RESOLVER'" >> "$GITHUB_ENV"
 
 
