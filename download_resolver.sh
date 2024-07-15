@@ -6,18 +6,30 @@ if [ "$1" == "" ]; then
     exit 255
 fi
 
-if [ "$2" == "" ]; then
-    >&2 echo Arg2 is missing, please supply os type: windows, glib, musl, macos
-    exit 255
+
+if [ $(find /etc -maxdepth 1 -name '*-release' | wc -l) -le 0 ]; then
+    DL_TYPE="macos"
+else
+    if [ $(find /etc -maxdepth 1 -name 'alpine-release' | wc -l) -eq 1 ]; then
+        DL_TYPE="musl"
+    else
+        if [ $(find /etc -maxdepth 1 -name '*-release' | wc -l) -gt 0 ]; then
+            DL_TYPE="glib"
+        else
+            DL_TYPE="windows"
+        fi
+    fi
 fi
+
+
 
 TEMP_DIR=$(mktemp -d -p $1)
 
-case $2 in
+case $DL_TYPE in
     windows)
     DOWNLOAD_URL="https://sca-downloads.s3.amazonaws.com/cli/latest/ScaResolver-win64.zip"
     DOWNLOAD_OUTPUT_PATH="$TEMP_DIR/resolver.zip"
-    UNZIP_CMD=(unzip $DOWNLOAD_OUTPUT_PATH -d $TEMP_DIR)
+    UNZIP_CMD=(unzip -qq $DOWNLOAD_OUTPUT_PATH -d $TEMP_DIR)
     ;;
 
     glib)
