@@ -300,7 +300,7 @@ runs:
       shell: bash
       if: inputs.scaresolver-tag == '' && inputs.build-container-tag != ''
       run: |
-        CONTAINER_TAG=$(${{ TOOLKIT_PATH }}/autobuild.sh -t "${{ inputs.build-container-tag }}" -d "${{ TOOLKIT_PATH }}" -u -g -a "--load")
+        CONTAINER_TAG=$(${{ env.TOOLKIT_PATH }}/autobuild.sh -t "${{ inputs.build-container-tag }}" -d "${{ env.TOOLKIT_PATH }}" -u -g -a "--load")
         echo "CONTAINER_TAG=$CONTAINER_TAG" >> "$GITHUB_ENV"
 
         cp $GITHUB_ACTION_PATH/ScaResolver "${{ env.RESOLVER_PATH }}"
