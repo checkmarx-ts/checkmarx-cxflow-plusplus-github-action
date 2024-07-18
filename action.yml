@@ -125,15 +125,6 @@ runs:
         distribution: 'corretto'
         java-version: '17'
 
-    - name: Container Registry Login
-      uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446
-      if: inputs.docker-login-username != '' && inputs.docker-login-password != ''
-      with:
-        registry: ${{ inputs.docker-login-registry }}
-        username: ${{ inputs.docker-login-username }}
-        password: ${{ inputs.docker-login-password }}
-
-
     - name: Import custom certs
       if: inputs.custom-ca-path != ''
       shell: bash
@@ -262,19 +253,58 @@ runs:
       run: echo "WIRE_TRACE_PARAMS=--logging.level.org.apache.http.wire=TRACE" >> "$GITHUB_ENV"
 
 
-    - name: Set SCAResolver parameters
+    - name: Container Registry Login
+      uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446
+      if: inputs.docker-login-username != '' && inputs.docker-login-password != '' 
+      with:
+        registry: ${{ inputs.docker-login-registry }}
+        username: ${{ inputs.docker-login-username }}
+        password: ${{ inputs.docker-login-password }}
+
+    - name: Set up Docker Buildx
+      if: inputs.scaresolver-tag != '' || inputs.build-container-tag != ''
+      uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226
+
+    - name: Set Temp Paths
+      shell: bash
+      run: |
+        RESOLVER=$(mktemp -d -p "$GITHUB_ACTION_PATH")
+        echo "RESOLVER_PATH=$RESOLVER" >> "$GITHUB_ENV"
+
+        TOOLKIT=$(mktemp -d -p "$GITHUB_ACTION_PATH")
+        echo "TOOLKIT_PATH=$TOOLKIT" >> "$GITHUB_ENV"
+
+    - name: Set SCAResolver parameters for scaresolver-tag
       shell: bash
       if: inputs.scaresolver-tag != ''
       run: |
-        echo "SCA_RESOLVER_CONFIG=--sca.enable-sca-resolver=true --sca.path-to-sca-resolver='$GITHUB_ACTION_PATH/'" >> "$GITHUB_ENV"
+        echo "CONTAINER_TAG=${{ inputs.scaresolver-tag }}" >> "$GITHUB_ENV"
+        cp $GITHUB_ACTION_PATH/ScaResolver "${{ env.RESOLVER_PATH }}"
+        echo "SCA_RESOLVER_CONFIG=--sca.enable-sca-resolver=true --sca.path-to-sca-resolver='${{ env.RESOLVER_PATH }}'" >> "$GITHUB_ENV"
 
-    - name: Set SCAResolver parameters
+    - name: Download Supply Chain Toolkit
       shell: bash
-      if: inputs.scaresolver-tag == '' 
+      if: inputs.scaresolver-tag == ''
       run: |
-        RESOLVER=$( "$GITHUB_ACTION_PATH"/download_resolver.sh "$GITHUB_ACTION_PATH")
+        wget -q -O ${{ env.TOOLKIT_PATH }}/build-environment.zip https://github.com/checkmarx-ts/cx-supply-chain-toolkit/releases/latest/download/build-environment.zip
+        unzip ${{ env.TOOLKIT_PATH }}/build-environment.zip -d ${{ env.TOOLKIT_PATH }}
+
+    - name: Set SCAResolver parameters for runner execution
+      shell: bash
+      if: inputs.scaresolver-tag == '' && inputs.build-container-tag == ''
+      run: |
+        RESOLVER=$( "${{ env.TOOLKIT_PATH }}"/download_resolver.sh "${{ env.RESOLVER_PATH }}")
         echo "SCA_RESOLVER_CONFIG=--sca.enable-sca-resolver=true --sca.path-to-sca-resolver='$RESOLVER'" >> "$GITHUB_ENV"
 
+    - name: Set SCAResolver parameters for autobuild execution
+      shell: bash
+      if: inputs.scaresolver-tag == '' && inputs.build-container-tag != ''
+      run: |
+        CONTAINER_TAG=$(${{ TOOLKIT_PATH }}/autobuild.sh -t "${{ inputs.build-container-tag }}" -d "${{ TOOLKIT_PATH }}" -u -g -a "--load")
+        echo "CONTAINER_TAG=$CONTAINER_TAG" >> "$GITHUB_ENV"
+
+        cp $GITHUB_ACTION_PATH/ScaResolver "${{ env.RESOLVER_PATH }}"
+        echo "SCA_RESOLVER_CONFIG=--sca.enable-sca-resolver=true --sca.path-to-sca-resolver='${{ env.RESOLVER_PATH }}'" >> "$GITHUB_ENV"
 
 
     - name: Set Sarif File Path
@@ -305,7 +335,7 @@ runs:
         SCA_TENANT: ${{ inputs.sca-tenant }}
         SCA_USERNAME: ${{ inputs.sca-username }}
         SCA_PASSWORD: ${{ inputs.sca-password }}
-        CONTAINER_TAG: ${{ inputs.scaresolver-tag }}
+        CONTAINER_TAG: ${{ env.CONTAINER_TAG }}
         SARIF_FILE_PATH: ${{ env.SARIF_FILE }}
         GITHUB_TOKEN: ${{ github.token }}
         GITHUB_APIURL: ${{ github.api_url }}/repos
@@ -337,7 +367,7 @@ runs:
 
 
     - name: Upload Sarif Results
-      if: inputs.upload-sarif-file == 'true' && env.CXFLOW_FEEDBACK_CHANNEL == 'Sarif' && (inputs.disable-sast-scan == 'false' || inputs.disable-sast-scan == 'false')
+      if: inputs.upload-sarif-file == 'true' && env.CXFLOW_FEEDBACK_CHANNEL == 'Sarif' && (inputs.disable-sast-scan == 'false' || inputs.disable-sca-scan == 'false')
       uses: github/codeql-action/upload-sarif@b611370bb5703a7efb587f9d136a52ea24c5c38c
       with:
         sarif_file: ${{ env.SARIF_FILE }}
@@ -350,10 +380,18 @@ runs:
         [[ -f "${{ env.SARIF_FILE }}" ]] && rm -f ${{ env.SARIF_FILE }} || :
 
 
-    - name: Finalize
+    - name: Finalize on Success
       if: ${{ !cancelled() }}
       shell: bash
       run: exit ${{ env.CXFLOW_RESULT }}
+
+    - name: Cleanup
+      if: always()
+      shell: bash
+      run: |
+        [ -d ${{ env.RESOLVER_PATH }} ] && rm -rf ${{ env.RESOLVER_PATH }} || :
+        [ -d ${{ env.TOOLKIT_PATH }} ] && rm -rf ${{ env.TOOLKIT_PATH }} || :
+    
     
 
 branding:
