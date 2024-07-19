@@ -125,25 +125,6 @@ runs:
         distribution: 'corretto'
         java-version: '17'
 
-    - name: Import custom certs
-      if: inputs.custom-ca-path != ''
-      shell: bash
-      run: |
-        if [ -f "${{ inputs.custom-ca-path }}" ];
-        then
-          keytool -importcert -cacerts -storepass changeit -noprompt -file "${{ inputs.custom-ca-path }}"
-        fi
-
-        if [ -d "${{ inputs.custom-ca-path }}" ];
-        then
-          for CA in $(ls ${{ inputs.custom-ca-path }});
-          do
-            keytool -alias "$CA" -importcert -cacerts -storepass changeit -noprompt -file "${{ inputs.custom-ca-path }}/${CA}" \
-              && echo "Imported $CA" || echo "$CA was not imported"
-          done
-        fi
-
-
     - name: Resolve CxFlow
       if: inputs.cxflow-jar-path == ''
       shell: bash
@@ -273,6 +254,30 @@ runs:
 
         TOOLKIT=$(mktemp -d -p "$GITHUB_ACTION_PATH")
         echo "TOOLKIT_PATH=$TOOLKIT" >> "$GITHUB_ENV"
+
+
+    - name: Import custom certs
+      if: inputs.custom-ca-path != ''
+      shell: bash
+      run: |
+        if [ -f "${{ inputs.custom-ca-path }}" ];
+        then
+          keytool -importcert -cacerts -storepass changeit -noprompt -file "${{ inputs.custom-ca-path }}"
+          cp "${{ inputs.custom-ca-path }}" "${{ env.TOOLKIT_PATH }}"/cacerts/
+        fi
+
+        if [ -d "${{ inputs.custom-ca-path }}" ];
+        then
+          for CA in $(ls ${{ inputs.custom-ca-path }});
+          do
+            keytool -alias "$CA" -importcert -cacerts -storepass changeit -noprompt -file "${{ inputs.custom-ca-path }}/${CA}" \
+              && echo "Imported $CA" || echo "$CA was not imported"
+
+            cp "$CA" "${{ env.TOOLKIT_PATH }}"/cacerts/
+          done
+        fi
+
+
 
     - name: Set SCAResolver parameters for scaresolver-tag
       shell: bash
