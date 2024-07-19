@@ -125,3 +125,12 @@ Please consult with Checkmarx Professional Services for guidance in using these 
 * `scaresolver-tag`: (default: blank) The tag for the containerized SCAResolver build environment where the action will execute dependency scanning.  The image must not be built with a `*-bare` target. If both `build-container-tag` and `scaresolver-tag` are supplied, the
 `scaresolver-tag` container will be the default container used to execute dependency
 resolution for an SCA scan.
+
+
+## Execution on Self-Host Runners
+
+If you are intending to execute this action on a self-hosted runner,
+the following is required:
+
+* Docker must be installed if executing dependency resolution in a container.
+* Don't use Windows self-hosted runners.
