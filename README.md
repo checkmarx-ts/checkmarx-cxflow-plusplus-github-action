@@ -4,85 +4,71 @@ This action uses the same underlying CxFlow scan orchestrator as the [checkmarx-
 
 This action has some significant differences:
 
-* It executes SCAResolver in containerized environments with customized tooling built using the [cx-supply-chain-toolkit](https://github.com/checkmarx-ts/cx-supply-chain-toolkit/releases).
-* It is a composite action that does not use the CxFlow container to execute.
-* It can be configured to automatically select a feedback channel appropriate for a push or a pull-request event.
-* The design focus is for it to be used in large scale deployments.
+* It can be configured to execute dependency resolution for SCA in the following locations:
+  * The GitHub hosted runner.
+  * A self-hosted GitHub runner.
+  * A docker image with a supplied tag, executed in either the GitHub hosted or self-hosted runner.
+* It will post scan summaries in pull-request comments with no additional configuration.
+* It will upload Sarif results to GitHub security with no additional configuration.
 
 
 # Quick Start
 
-Execute the CxFlow++ action by including it as a step in your workflow and supplying
-the minimal required parameters:
+There are several example workflows that can be found on the [Wiki](https://github.com/checkmarx-ts/checkmarx-cxflow-plusplus-github-action/wiki).
+
+This example uses the CxFlow++ action to do the following:
+
+* Performs a SAST and SCA scan on push to a protected branch or a pull-request
+targetting a protected branch.
+* When scanning on pull-request, posts a scan summary to the pull-request discussion.
+* Block merges for pull-requests targeting the defined default branch until the scan is complete.
+* When scanning on push, uploads Sarif results to the GitHub code scanning vulnerability alerts.
+* Closes code scanning vulnerability alerts when the vulnerability is fixed or
+marked Not Exploitable.
+
 
 ```
-- name: Scan with CxFlow++
-  id: cxflow
-  uses:  checkmarx-ts/checkmarx-cxflow-github-pp-action@v1
-  with:
-    sast-url: https://...
-    sast-team: /CxServer/...
-    project-name: myproject-{branch}
-    app-name: MyProject
-    sast-username: ${{ secrets.<YOUR VALUE HERE> }}
-    sast-password: ${{ secrets.<YOUR VALUE HERE> }}
-    sca-tenant: ${{ secrets.<YOUR VALUE HERE> }}
-    sca-username: ${{ secrets.<YOUR VALUE HERE> }}
-    sca-password: ${{ secrets.<YOUR VALUE HERE> }}
-
+name: SDLC Workflow with CxFlow++
+on:
+    push:
+        branches: master
+    pull_request:
+        branches: master
+    
+jobs:
+    checkmarx-scan:
+        permissions:
+            security-events: write
+            pull-requests: write
+        runs-on: ubuntu-latest
+        steps:
+          - name: Fetch Code
+            uses: actions/checkout@v4
+        
+          - name: Execute Scan
+            uses: checkmarx-ts/checkmarx-cxflow-plusplus-github-action@v2
+            with:
+                sast-url: ${{ vars.CX_SAST_URL }}
+                sast-username: ${{ secrets.CX_SAST_USERNAME }}
+                sast-password: ${{ secrets.CX_SAST_PASSWORD }}
+                sca-tenant: ${{ secrets.CX_SCA_TENANT }}
+                sca-username: ${{ secrets.CX_SCA_USERNAME }}
+                sca-password: ${{ secrets.CX_SCA_PASSWORD }}
 ```
-
-By default, the action execution will:
-
-* Perform a SAST and SCA scan.
-* Select Sarif as the feedback channel for push requests and update the GitHub
-Security tab with results.
-* Block merges for pull-requests targeting the defined default branch.
-* Post a scan result summary to pull request comments.
-
-All CxFlow configuration options can be overridden with additional configuration.
 
 ---
 
-
-# Custom Dependency Resolution Build Environments
-
-The Checkmarx SCA project is used for scanning project dependencies for known vulnerabilities.  To obtain an accurate dependency tree, the dependency
-resolution part of your build must be executed.  Dependency resolution usually requires a properly configured build environment.  Deploying
-a security GitHub action at enterprise scale can make it difficult to ensure that the scanning is performed in an appropriate build environment
-across hundreds or thousands of repositories.  
-
-This action, when used in conjunction with containerized build environments generated using the [cx-supply-chain-toolkit](https://github.com/checkmarx-ts/cx-supply-chain-toolkit/releases) can assist with enterprise-scale deployments of scanning actions.
-
-
-## Supply Chain Toolkit Container Compatibility
-
-The containerized dependency resolution environment must execute with
-User Id 1001 and Group Id 127 for compatibility with Github action
-execution environments.  Compatible containerized build environments
-created with [cx-supply-chain-toolkit](https://github.com/checkmarx-ts/cx-supply-chain-toolkit/releases) can be created using a container build
-tool (such as Docker buildx) like so:
-
-```
-docker build -t your_tag_here \
-  --build-arg BASE=default-build:latest \
-  --target=resolver-debian \
-  --build-arg USER_ID=1001 \
-  --build-arg GROUP_ID=127 \
-  -f Dockerfile .
-``````
-
 # Configuration Parameters
 
-## Required Parameters
+## Scan Parameters
 
-* `app-name`: The name of the application used when making issue tracker tags.
-* `project-name`: The name of the scan project.  This should include the branch being scanned using your organization's established system naming convention. The string `{branch}` will be replaced by the event's branch name if found in the project name.
+* `app-name`: The name of the application used when making issue tracker tags. Default: `$GITHUB_REPOSITORY`
+* `project-name`: The name of the scan project.  This should include the branch being scanned using your organization's established system naming convention. The string `{branch}` will be replaced by the event's branch name if found in the project name. Default: `$GITHUB_REPOSITORY-{branch}`
 
 
 **Required unless `disable-sast-scan` is set to `true`**
 * `sast-url`: The base URL to the Checkmarx SAST server (do not include `CxWebClient`).
-* `sast-team`: The full path of the SAST team that owns the project to scan.
+* `sast-team`: The full path of the SAST team that owns the project to scan. Default: `/CxServer`
 * `sast-username`: The username of the SAST account to use for scanning.
 * `sast-password`: The password for the selected SAST account.
 
@@ -111,6 +97,8 @@ docker build -t your_tag_here \
 
 ### Execution Parameters
 
+* `build-container-tag`: The container image where SCA Resolver is executed.  If not supplied, SCA Resolver is executed on the current GitHub runner.
+* `break-on-manifest-failure`: (default: true) If set to false, build does not break upon dependency resolution failure.
 * `upload-sarif-file`: (default: true) Uploads the Sarif file to create entries on the GitHub security tab during push events. 
 * `delete-sarif-file`: (default: true) Set to "false" when using the Sarif feedback channel to keep the Sarif file at the path returned in the `sarif-path` output parameter.
 * `default-branch`: (default: `${{github.event.repository.default_branch}}`) The default branch of the repository used as the root parent project in SAST from which branch projects are derived.  This defaults to the repo's defined default branch.
@@ -120,11 +108,30 @@ docker build -t your_tag_here \
 * `sast-log-level`: (default: INFO) The logging level for CxFlow output emitted as the action executes. (TRACE, DEBUG, ERROR, INFO)
 * `push-feedback-channel`: (default: Sarif) The feedback channel to use when scanning for a push.
 * `pull-request-feedback-channel`: (default: GITHUBPULL) The feedback channel to use when scanning for a pull request.
-* `application-yaml-path`: (default: blank) A path to a CxFlow yaml configuration file.
-* `scaresolver-tag`: (default: blank) The tag for the containerized SCAResolver build environment where the action will execute dependency scanning.  The image must not be built with a `*-bare` target. If this is not supplied, the SCA dependency scan will execute on the SCA server.
+* `application-yaml-path`: (default: `$GITHUB_ACTION_PATH/cxflow-defaults.yml`) A path to a CxFlow yaml configuration file.
 
 ### Java Parameters
 * `java-opts`: (default: -Xms512m -Xmx2048m) Options to pass to the JVM.
 * `java-props`: (default: -Djava.security.egd=file:/dev/./urandom) Properties to pass to the JVM.
 * `spring-props`: (default: blank) Spring boot properties to pass to the JVM.
 * `custom-ca-path`: (default: blank) Path to a file or directory containing a custom CA cert chain that is imported into the Java runtime cacerts store. 
+
+
+## Advanced Parameters
+
+Please consult with Checkmarx Professional Services for guidance in using these parameters.
+
+### Execution Parameters
+
+* `scaresolver-tag`: (default: blank) The tag for the containerized SCAResolver build environment where the action will execute dependency scanning.  The image must not be built with a `*-bare` target. If both `build-container-tag` and `scaresolver-tag` are supplied, the
+`scaresolver-tag` container will be the default container used to execute dependency
+resolution for an SCA scan.
+
+
+## Execution on Self-Host Runners
+
+If you are intending to execute this action on a self-hosted runner,
+the following is required:
+
+* Docker must be installed if executing dependency resolution in a container.
+* Don't use Windows self-hosted runners.

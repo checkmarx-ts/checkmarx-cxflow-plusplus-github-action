@@ -5,10 +5,8 @@ author: 'Nathan Leach, Principal Solutions Architect, Checkmarx'
 inputs:
   # Required parameters
   project-name:
-    required: true
     description: The name of the scan project.  This should include the branch being scanned using your organization's established system naming convention. The string `{branch}` will be replaced by the event's branch name if found in the project name.
   app-name:
-    required: true
     description: The name of the application used when making issue tracker tags.
 
 
@@ -18,6 +16,7 @@ inputs:
     description: The base URL to the Checkmarx SAST server (do not include CxWebClient).
   sast-team:
     required: false
+    default: /CxServer
     description: The full path of the SAST team that owns the project to scan.
   sast-username:
     required: false
@@ -99,6 +98,12 @@ inputs:
   application-yaml-path:
     default: ''
     description: A path to a CxFlow yaml configuration file.
+  build-container-tag:
+    default: ''
+    description: Set the the tag of the container used to perform the code build.  SCA Resolver will execute in an instance of this container to obtain an accurate dependency tree.
+  break-on-manifest-failure:
+    default: true
+    description: 
   scaresolver-tag:
     default: ''
     description: The tag for the containerized SCAResolver build environment where the action will execute dependency scanning.  The image must not be built with a *-bare target. If this is not supplied, the SCA dependency scan will execute on the SCA server.
@@ -109,53 +114,19 @@ inputs:
     default: ''
     description: Path to a file or directory containing a custom CA cert chain that is imported into the Java runtime cacerts store. 
 
-  # For development purposes only - not documented.
-  action-root:
-    default: .
-    description: The root directory containing the action artifacts.
-  action-artifact-path:
-    default:
-    description: The path under the root directory where the action artifacts can be found.
-
 outputs:
   sarif-path:
     description: The path to the Sarif file produced from the scan.
     value: ${{ steps.sarif-path-gen.outputs.sarif-path }}
+
+
 runs:
   using: 'composite'
   steps:
-    - uses: actions/setup-java@v3
+    - uses: actions/setup-java@99b8673ff64fbf99d8d325f52d9a5bdedb8483e9
       with:
         distribution: 'corretto'
         java-version: '17'
-
-    - name: Container Registry Login
-      uses: docker/login-action@v2
-      if: inputs.docker-login-username != '' && inputs.docker-login-password != ''
-      with:
-        registry: ${{ inputs.docker-login-registry }}
-        username: ${{ inputs.docker-login-username }}
-        password: ${{ inputs.docker-login-password }}
-
-
-    - name: Import custom certs
-      if: inputs.custom-ca-path != ''
-      shell: bash
-      run: |
-        if [ -f "${{ inputs.custom-ca-path }}" ];
-        then
-          keytool -importcert -cacerts -storepass changeit -noprompt -file "${{ inputs.custom-ca-path }}"
-        fi
-
-        if [ -d "${{ inputs.custom-ca-path }}" ];
-        then
-          for CA in $(ls ${{ inputs.custom-ca-path }});
-          do
-            keytool -alias "$CA" -importcert -cacerts -storepass changeit -noprompt -file "${{ inputs.custom-ca-path }}/${CA}" \
-              && echo "Imported $CA" || echo "$CA was not imported"
-          done
-        fi
-
 
     - name: Resolve CxFlow
       if: inputs.cxflow-jar-path == ''
@@ -163,21 +134,25 @@ runs:
       run: | 
 
         if [ "${{ inputs.cxflow-version }}" == "latest" ]; then
-
           CXFLOW_JAR=$(curl -s https://api.github.com/repos/checkmarx-ltd/cx-flow/releases/latest | \
             jq ".assets[].browser_download_url" | \
-            grep java11 | \
-            sed -r 's/.?http.*\/(.+java11.jar).?$/\1/g')
+            sed -r 's/.?http.*\/(.+\.jar).?$/\1/g')
 
-          CXFLOW_VERSION=$(echo $CXFLOW_JAR | sed -r 's/cx-flow-(.+)-java11.jar/\1/g')
+          CXFLOW_VERSION=$(echo $CXFLOW_JAR | sed -r 's/cx-flow-(.+).jar/\1/g')
         else
-          export CXFLOW_VERSION=${{ inputs.cxflow-version }}
-          export CXFLOW_JAR=cx-flow-$CXFLOW_VERSION-java11.jar
+          CXFLOW_VERSION=${{ inputs.cxflow-version }}
+          CXFLOW_JAR=$(curl -s https://api.github.com/repos/checkmarx-ltd/cx-flow/releases | \
+            jq ".[].assets[].browser_download_url" | \
+            grep -E "$CXFLOW_VERSION(-java11)?.jar" | \
+            head -n 1 | \
+            sed -r 's/.?http.*\/(.+(-java11)?.jar).?$/\1/g')
+
         fi
 
         echo "CXFLOW_VERSION=$CXFLOW_VERSION" >> "$GITHUB_ENV"
         echo "CXFLOW_JAR=$CXFLOW_JAR" >> "$GITHUB_ENV"
         echo "CXFLOW_FOLDER=$(realpath ../cxflow-$GITHUB_REPOSITORY_OWNER)" >> "$GITHUB_ENV"
+        echo Using CxFlow JAR: $CXFLOW_JAR
 
 
     - name: Downloading CxFlow
@@ -196,6 +171,29 @@ runs:
         echo "CXFLOW_FOLDER=$(dirname $(realpath ${{ inputs.cxflow-jar-path }}) )" >> "$GITHUB_ENV"
         echo "CXFLOW_JAR=$(basename ${{ inputs.cxflow-jar-path }})" >> "$GITHUB_ENV"
 
+
+    - name: Resolve Manifest Failure Break
+      shell: bash
+      run: | 
+        if [ "${{ inputs.break-on-manifest-failure}}" == "true" ]; then
+          echo SCA Resolver manifest failures are set to break the build.
+          echo "CXFLOW_SCA_MANIFEST_FAILURE='--sca.sca-resolver-add-parameters.break-on-manifest-failure'" >> "$GITHUB_ENV"
+        else
+          echo SCA Resolver manifest failures WILL NOT break the build.
+          echo "CXFLOW_SCA_MANIFEST_FAILURE=" >> "$GITHUB_ENV"
+        fi
+
+
+    - name: Setup App Name
+      shell: bash
+      run: |
+
+        if [ "${{ inputs.app-name }}" == "" ]; then
+          echo "APPNAME=$GITHUB_REPOSITORY" >> "$GITHUB_ENV"
+        else
+          echo "APPNAME=${{ inputs.app-name }}" >> "$GITHUB_ENV"        
+        fi
+
     - name: Use custom config YAML 
       shell: bash
       if: inputs.application-yaml-path != ''
@@ -207,8 +205,7 @@ runs:
       shell: bash
       if: inputs.application-yaml-path == ''
       run: |
-        echo "CONFIG_PARAM=--spring.config.location='${{ inputs.action-root }}/${{ inputs.action-artifact-path}}/cxflow-defaults.yml'" >> "$GITHUB_ENV"
-
+        echo "CONFIG_PARAM=--spring.config.location='$GITHUB_ACTION_PATH/cxflow-defaults.yml'" >> "$GITHUB_ENV"
 
     - name: Set params for PR
       shell: bash
@@ -222,7 +219,7 @@ runs:
 
     - name: Set params for push
       shell: bash
-      if: github.event_name == 'push'
+      if: github.event_name != 'pull_request'
       run: |
         echo "CXFLOW_FEEDBACK_CHANNEL=${{ inputs.push-feedback-channel }}" >> "$GITHUB_ENV"
         echo "CXFLOW_FEEDBACK_PARAMS=--bug-tracker='${{ inputs.push-feedback-channel }}'" >> "$GITHUB_ENV"
@@ -232,7 +229,13 @@ runs:
     - name: Set project name
       shell: bash
       run: |
-        PROJECT_NAME=$(echo ${{ inputs.project-name }} | sed -E "s/(.*)(\{branch\})(.*)/\1${{ env.PROPER_BRANCH_NAME }}\3/")
+        if [ "${{ inputs.project-name }}" == "" ]; then
+          PROJECT_NAME="$GITHUB_REPOSITORY-{branch}"
+        else
+          PROJECT_NAME="${{ inputs.project-name }}"
+        fi
+
+        PROJECT_NAME=$(echo $PROJECT_NAME | sed -E "s/(.*)(\{branch\})(.*)/\1${{ env.PROPER_BRANCH_NAME }}\3/")
         echo "PROJECT_NAME=$PROJECT_NAME" >> "$GITHUB_ENV"
 
     - name: Set log level
@@ -246,11 +249,82 @@ runs:
       run: echo "WIRE_TRACE_PARAMS=--logging.level.org.apache.http.wire=TRACE" >> "$GITHUB_ENV"
 
 
-    - name: Set SCAResolver parameters
+    - name: Container Registry Login
+      uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446
+      if: inputs.docker-login-username != '' && inputs.docker-login-password != '' 
+      with:
+        registry: ${{ inputs.docker-login-registry }}
+        username: ${{ inputs.docker-login-username }}
+        password: ${{ inputs.docker-login-password }}
+
+    - name: Set up Docker Buildx
+      if: inputs.scaresolver-tag != '' || inputs.build-container-tag != ''
+      uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226
+
+    - name: Set Temp Paths
+      shell: bash
+      run: |
+        RESOLVER=$(mktemp -d -p "$GITHUB_ACTION_PATH")
+        echo "RESOLVER_PATH=$RESOLVER" >> "$GITHUB_ENV"
+
+        TOOLKIT=$(mktemp -d -p "$GITHUB_ACTION_PATH")
+        echo "TOOLKIT_PATH=$TOOLKIT" >> "$GITHUB_ENV"
+
+
+    - name: Import custom certs
+      if: inputs.custom-ca-path != ''
+      shell: bash
+      run: |
+        if [ -f "${{ inputs.custom-ca-path }}" ];
+        then
+          keytool -importcert -cacerts -storepass changeit -noprompt -file "${{ inputs.custom-ca-path }}"
+          cp "${{ inputs.custom-ca-path }}" "${{ env.TOOLKIT_PATH }}"/cacerts/
+        fi
+
+        if [ -d "${{ inputs.custom-ca-path }}" ];
+        then
+          for CA in $(ls ${{ inputs.custom-ca-path }});
+          do
+            keytool -alias "$CA" -importcert -cacerts -storepass changeit -noprompt -file "${{ inputs.custom-ca-path }}/${CA}" \
+              && echo "Imported $CA" || echo "$CA was not imported"
+
+            cp "$CA" "${{ env.TOOLKIT_PATH }}"/cacerts/
+          done
+        fi
+
+
+
+    - name: Set SCAResolver parameters for scaresolver-tag
       shell: bash
       if: inputs.scaresolver-tag != ''
       run: |
-        echo "SCA_RESOLVER_CONFIG=--sca.enable-sca-resolver=true --sca.path-to-sca-resolver='${{ inputs.action-root }}/${{ inputs.action-artifact-path}}/'" >> "$GITHUB_ENV"
+        echo "CONTAINER_TAG=${{ inputs.scaresolver-tag }}" >> "$GITHUB_ENV"
+        cp $GITHUB_ACTION_PATH/ScaResolver "${{ env.RESOLVER_PATH }}"
+        echo "SCA_RESOLVER_CONFIG=--sca.enable-sca-resolver=true --sca.path-to-sca-resolver='${{ env.RESOLVER_PATH }}'" >> "$GITHUB_ENV"
+
+    - name: Download Supply Chain Toolkit
+      shell: bash
+      if: inputs.scaresolver-tag == ''
+      run: |
+        wget -q -O ${{ env.TOOLKIT_PATH }}/build-environment.zip https://github.com/checkmarx-ts/cx-supply-chain-toolkit/releases/latest/download/build-environment.zip
+        unzip ${{ env.TOOLKIT_PATH }}/build-environment.zip -d ${{ env.TOOLKIT_PATH }}
+
+    - name: Set SCAResolver parameters for runner execution
+      shell: bash
+      if: inputs.scaresolver-tag == '' && inputs.build-container-tag == ''
+      run: |
+        RESOLVER=$( "${{ env.TOOLKIT_PATH }}"/download_resolver.sh "${{ env.RESOLVER_PATH }}")
+        echo "SCA_RESOLVER_CONFIG=--sca.enable-sca-resolver=true --sca.path-to-sca-resolver='$RESOLVER'" >> "$GITHUB_ENV"
+
+    - name: Set SCAResolver parameters for autobuild execution
+      shell: bash
+      if: inputs.scaresolver-tag == '' && inputs.build-container-tag != ''
+      run: |
+        CONTAINER_TAG=$(${{ env.TOOLKIT_PATH }}/autobuild.sh -t "${{ inputs.build-container-tag }}" -d "${{ env.TOOLKIT_PATH }}" -u -g -a "--load")
+        echo "CONTAINER_TAG=$CONTAINER_TAG" >> "$GITHUB_ENV"
+
+        cp $GITHUB_ACTION_PATH/ScaResolver "${{ env.RESOLVER_PATH }}"
+        echo "SCA_RESOLVER_CONFIG=--sca.enable-sca-resolver=true --sca.path-to-sca-resolver='${{ env.RESOLVER_PATH }}'" >> "$GITHUB_ENV"
 
 
     - name: Set Sarif File Path
@@ -270,16 +344,10 @@ runs:
         echo "SCANNER_CONFIG=--cx-flow.enabled-vulnerability-scanners='${SCANNERS}'" >> "$GITHUB_ENV"
 
 
-    - name: Prune deleted containers on self-hosted runner
-      if: ${{ !startsWith(runner.name, 'GitHub') }}
-      shell: bash
-      run: docker system prune -f
-
     - name: Orchestrate scans with CxFlow
       if: inputs.disable-sast-scan == 'false' || inputs.disable-sca-scan == 'false'
       shell: bash
       env:
-        CONTAINER_TAG: ${{ inputs.scaresolver-tag }}
         CHECKMARX_BASE_URL: ${{ inputs.sast-url }}
         CHECKMARX_URL: ${{ inputs.sast-url }}/cxrestapi
         CHECKMARX_USERNAME: ${{ inputs.sast-username }}
@@ -287,6 +355,7 @@ runs:
         SCA_TENANT: ${{ inputs.sca-tenant }}
         SCA_USERNAME: ${{ inputs.sca-username }}
         SCA_PASSWORD: ${{ inputs.sca-password }}
+        CONTAINER_TAG: ${{ env.CONTAINER_TAG }}
         SARIF_FILE_PATH: ${{ env.SARIF_FILE }}
         GITHUB_TOKEN: ${{ github.token }}
         GITHUB_APIURL: ${{ github.api_url }}/repos
@@ -299,6 +368,7 @@ runs:
           ${{ env.CONFIG_PARAM }} \
           --scan --f=. \
           ${{ env.SCA_RESOLVER_CONFIG }} \
+          ${{ env.CXFLOW_SCA_MANIFEST_FAILURE }} \
           --cx-team='${{ inputs.sast-team }}' \
           --cx-project='${{ env.PROJECT_NAME }}' \
           --namespace='${{ github.repository_owner }}' \
@@ -310,7 +380,7 @@ runs:
           ${{ env.WIRE_TRACE_PARAMS }} \
           ${{ env.SCANNER_CONFIG }} \
           --SHA='${{ github.sha }}' \
-          --app='${{ inputs.app-name }}' \
+          --app='${{ env.APPNAME }}' \
           ${{ inputs.cxflow-params }} \
           ${{ env.CXFLOW_EVENT_PARAMS }}
 
@@ -318,8 +388,8 @@ runs:
 
 
     - name: Upload Sarif Results
-      if: inputs.upload-sarif-file == 'true' && env.CXFLOW_FEEDBACK_CHANNEL == 'Sarif' && (inputs.disable-sast-scan == 'false' || inputs.disable-sast-scan == 'false')
-      uses: github/codeql-action/upload-sarif@v2
+      if: inputs.upload-sarif-file == 'true' && env.CXFLOW_FEEDBACK_CHANNEL == 'Sarif' && (inputs.disable-sast-scan == 'false' || inputs.disable-sca-scan == 'false')
+      uses: github/codeql-action/upload-sarif@b611370bb5703a7efb587f9d136a52ea24c5c38c
       with:
         sarif_file: ${{ env.SARIF_FILE }}
 
@@ -331,10 +401,18 @@ runs:
         [[ -f "${{ env.SARIF_FILE }}" ]] && rm -f ${{ env.SARIF_FILE }} || :
 
 
-    - name: Finalize
+    - name: Finalize on Success
       if: ${{ !cancelled() }}
       shell: bash
       run: exit ${{ env.CXFLOW_RESULT }}
+
+    - name: Cleanup
+      if: always()
+      shell: bash
+      run: |
+        [ -d ${{ env.RESOLVER_PATH }} ] && rm -rf ${{ env.RESOLVER_PATH }} || :
+        [ -d ${{ env.TOOLKIT_PATH }} ] && rm -rf ${{ env.TOOLKIT_PATH }} || :
+    
     
 
 branding:
