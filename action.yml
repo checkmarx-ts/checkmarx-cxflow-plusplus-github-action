@@ -101,6 +101,9 @@ inputs:
   build-container-tag:
     default: ''
     description: Set the the tag of the container used to perform the code build.  SCA Resolver will execute in an instance of this container to obtain an accurate dependency tree.
+  break-on-manifest-failure:
+    default: true
+    description: 
   scaresolver-tag:
     default: ''
     description: The tag for the containerized SCAResolver build environment where the action will execute dependency scanning.  The image must not be built with a *-bare target. If this is not supplied, the SCA dependency scan will execute on the SCA server.
@@ -167,6 +170,16 @@ runs:
       run: |
         echo "CXFLOW_FOLDER=$(dirname $(realpath ${{ inputs.cxflow-jar-path }}) )" >> "$GITHUB_ENV"
         echo "CXFLOW_JAR=$(basename ${{ inputs.cxflow-jar-path }})" >> "$GITHUB_ENV"
+
+
+    - name: Resolve Manifest Failure Break
+      shell: bash
+      run: | 
+        if [ "${{ inputs.break-on-manifest-failure}}" == "true"]; then
+          echo "CXFLOW_SCA_MANIFEST_FAILURE=--sca.sca-resolver-add-parameters.break-on-manifest-failure=true" >> "$GITHUB_ENV"
+        else
+          echo "CXFLOW_SCA_MANIFEST_FAILURE=" >> "$GITHUB_ENV"
+        fi
 
 
     - name: Setup App Name
@@ -353,6 +366,7 @@ runs:
           ${{ env.CONFIG_PARAM }} \
           --scan --f=. \
           ${{ env.SCA_RESOLVER_CONFIG }} \
+          ${{ env.CXFLOW_SCA_MANIFEST_FAILURE }} \
           --cx-team='${{ inputs.sast-team }}' \
           --cx-project='${{ env.PROJECT_NAME }}' \
           --namespace='${{ github.repository_owner }}' \

@@ -97,6 +97,8 @@ jobs:
 
 ### Execution Parameters
 
+* `build-container-tag`: The container image where SCA Resolver is executed.  If not supplied, SCA Resolver is executed on the current GitHub runner.
+* `break-on-manifest-failure`: (default: true) If set to false, build does not break upon dependency resolution failure.
 * `upload-sarif-file`: (default: true) Uploads the Sarif file to create entries on the GitHub security tab during push events. 
 * `delete-sarif-file`: (default: true) Set to "false" when using the Sarif feedback channel to keep the Sarif file at the path returned in the `sarif-path` output parameter.
 * `default-branch`: (default: `${{github.event.repository.default_branch}}`) The default branch of the repository used as the root parent project in SAST from which branch projects are derived.  This defaults to the repo's defined default branch.
@@ -107,7 +109,6 @@ jobs:
 * `push-feedback-channel`: (default: Sarif) The feedback channel to use when scanning for a push.
 * `pull-request-feedback-channel`: (default: GITHUBPULL) The feedback channel to use when scanning for a pull request.
 * `application-yaml-path`: (default: `$GITHUB_ACTION_PATH/cxflow-defaults.yml`) A path to a CxFlow yaml configuration file.
-* `build-container-tag`: The container image where SCA Resolver is executed.  If not supplied, SCA Resolver is executed on the current GitHub runner.
 
 ### Java Parameters
 * `java-opts`: (default: -Xms512m -Xmx2048m) Options to pass to the JVM.
