@@ -175,7 +175,7 @@ runs:
     - name: Resolve Manifest Failure Break
       shell: bash
       run: | 
-        if [ "${{ inputs.break-on-manifest-failure}}" == "true"]; then
+        if [ "${{ inputs.break-on-manifest-failure}}" == "true" ]; then
           echo SCA Resolver manifest failures are set to break the build.
           echo "CXFLOW_SCA_MANIFEST_FAILURE='--sca.sca-resolver-add-parameters.break-on-manifest-failure=true'" >> "$GITHUB_ENV"
         else
