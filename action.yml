@@ -128,49 +128,91 @@ runs:
         distribution: 'corretto'
         java-version: '17'
 
-    - name: Resolve CxFlow
+    - name: Set Temp Paths
+      shell: bash
+      run: |
+        RESOLVER=$(mktemp -d -p "$GITHUB_ACTION_PATH")
+        echo "RESOLVER_PATH=$RESOLVER" >> "$GITHUB_ENV"
+
+        TOOLKIT=$(mktemp -d -p "$GITHUB_ACTION_PATH")
+        echo "TOOLKIT_PATH=$TOOLKIT" >> "$GITHUB_ENV"
+
+        PSCICDTOOLS=$(mktemp -d -p "$GITHUB_ACTION_PATH")
+        echo "PSCICDTOOLS_PATH=$PSCICDTOOLS" >> "$GITHUB_ENV"
+
+    - name: Download PS CI/CD Tools
+      shell: bash
+      run: |
+        wget -q -O ${{ env.PSCICDTOOLS_PATH }}/cxflow-downloader.jar https://github.com/checkmarx-ts/ps-cicd-tools/releases/latest/download/cxflow-downloader.jar
+        wget -q -O ${{ env.PSCICDTOOLS_PATH }}/archive-downloader.jar https://github.com/checkmarx-ts/ps-cicd-tools/releases/latest/download/archive-downloader.jar
+
+    - name: Download CxFlow
       if: inputs.cxflow-jar-path == ''
       shell: bash
-      run: | 
+      run: |
+
+        CXFLOW_DOWNLOAD_OPTS=--skip --outdir "$GITHUB_ACTION_PATH/cx-flow"
 
         if [ "${{ inputs.cxflow-version }}" == "latest" ]; then
-          CXFLOW_JAR=$(curl -s https://api.github.com/repos/checkmarx-ltd/cx-flow/releases/latest | \
-            jq ".assets[].browser_download_url" | \
-            sed -r 's/.?http.*\/(.+\.jar).?$/\1/g')
-
-          CXFLOW_VERSION=$(echo $CXFLOW_JAR | sed -r 's/cx-flow-(.+).jar/\1/g')
+          CXFLOW_JAR_PATH=$(java -jar ${{ env.PSCICDTOOLS_PATH }}/cxflow-downloader.jar --latest $CXFLOW_DOWNLOAD_OPTS)
         else
-          CXFLOW_VERSION=${{ inputs.cxflow-version }}
-          CXFLOW_JAR=$(curl -s https://api.github.com/repos/checkmarx-ltd/cx-flow/releases | \
-            jq ".[].assets[].browser_download_url" | \
-            grep -E "$CXFLOW_VERSION(-java11)?.jar" | \
-            head -n 1 | \
-            sed -r 's/.?http.*\/(.+(-java11)?.jar).?$/\1/g')
-
+          CXFLOW_JAR_PATH=$(java -jar ${{ env.PSCICDTOOLS_PATH }}/cxflow-downloader.jar --version ${{ inputs.cxflow-version }} $CXFLOW_DOWNLOAD_OPTS)
         fi
 
-        echo "CXFLOW_VERSION=$CXFLOW_VERSION" >> "$GITHUB_ENV"
-        echo "CXFLOW_JAR=$CXFLOW_JAR" >> "$GITHUB_ENV"
-        echo "CXFLOW_FOLDER=$(realpath ../cxflow-$GITHUB_REPOSITORY_OWNER)" >> "$GITHUB_ENV"
+        echo "CXFLOW_JAR_PATH=$CXFLOW_JAR_PATH" >> "$GITHUB_ENV"
+
         echo Using CxFlow JAR: $CXFLOW_JAR
+        
 
 
-    - name: Downloading CxFlow
-      shell: bash
-      if: inputs.cxflow-jar-path == ''
-      run: |
-        [[ ! -d "${{ env.CXFLOW_FOLDER }}" ]] && mkdir ${{ env.CXFLOW_FOLDER }} || :
-        [[ ! -f  ${{ env.CXFLOW_FOLDER }}/${{ env.CXFLOW_JAR}} ]] && wget -q -O ${{ env.CXFLOW_FOLDER }}/${{ env.CXFLOW_JAR}} \
-        https://github.com/checkmarx-ltd/cx-flow/releases/download/${{ env.CXFLOW_VERSION }}/${{ env.CXFLOW_JAR }} || :
+    # - name: Resolve CxFlow
+    #   if: inputs.cxflow-jar-path == ''
+    #   shell: bash
+    #   run: | 
 
+    #     if [ "${{ inputs.cxflow-version }}" == "latest" ]; then
+    #       CXFLOW_JAR=$(curl -s https://api.github.com/repos/checkmarx-ltd/cx-flow/releases/latest | \
+    #         jq ".assets[].browser_download_url" | \
+    #         sed -r 's/.?http.*\/(.+\.jar).?$/\1/g')
+
+    #       CXFLOW_VERSION=$(echo $CXFLOW_JAR | sed -r 's/cx-flow-(.+).jar/\1/g')
+    #     else
+    #       CXFLOW_VERSION=${{ inputs.cxflow-version }}
+    #       CXFLOW_JAR=$(curl -s https://api.github.com/repos/checkmarx-ltd/cx-flow/releases | \
+    #         jq ".[].assets[].browser_download_url" | \
+    #         grep -E "$CXFLOW_VERSION(-java11)?.jar" | \
+    #         head -n 1 | \
+    #         sed -r 's/.?http.*\/(.+(-java11)?.jar).?$/\1/g')
+
+    #     fi
+
+    #     echo "CXFLOW_VERSION=$CXFLOW_VERSION" >> "$GITHUB_ENV"
+    #     echo "CXFLOW_JAR=$CXFLOW_JAR" >> "$GITHUB_ENV"
+    #     echo "CXFLOW_FOLDER=$(realpath ../cxflow-$GITHUB_REPOSITORY_OWNER)" >> "$GITHUB_ENV"
+    #     echo Using CxFlow JAR: $CXFLOW_JAR
+
+
+    # - name: Downloading CxFlow
+    #   shell: bash
+    #   if: inputs.cxflow-jar-path == ''
+    #   run: |
+    #     [[ ! -d "${{ env.CXFLOW_FOLDER }}" ]] && mkdir ${{ env.CXFLOW_FOLDER }} || :
+    #     [[ ! -f  ${{ env.CXFLOW_FOLDER }}/${{ env.CXFLOW_JAR}} ]] && wget -q -O ${{ env.CXFLOW_FOLDER }}/${{ env.CXFLOW_JAR}} \
+    #     https://github.com/checkmarx-ltd/cx-flow/releases/download/${{ env.CXFLOW_VERSION }}/${{ env.CXFLOW_JAR }} || :
+
+
+    # - name: Set CxFlow jar location environment variables
+    #   shell: bash
+    #   if: inputs.cxflow-jar-path != ''
+    #   run: |
+    #     echo "CXFLOW_FOLDER=$(dirname $(realpath ${{ inputs.cxflow-jar-path }}) )" >> "$GITHUB_ENV"
+    #     echo "CXFLOW_JAR=$(basename ${{ inputs.cxflow-jar-path }})" >> "$GITHUB_ENV"
 
     - name: Set CxFlow jar location environment variables
       shell: bash
       if: inputs.cxflow-jar-path != ''
       run: |
-        echo "CXFLOW_FOLDER=$(dirname $(realpath ${{ inputs.cxflow-jar-path }}) )" >> "$GITHUB_ENV"
-        echo "CXFLOW_JAR=$(basename ${{ inputs.cxflow-jar-path }})" >> "$GITHUB_ENV"
-
+        echo "CXFLOW_JAR_PATH=$(realpath ${{ inputs.cxflow-jar-path }})" >> "$GITHUB_ENV"
 
     - name: Resolve Manifest Failure Break
       shell: bash
@@ -182,7 +224,6 @@ runs:
           echo SCA Resolver manifest failures WILL NOT break the build.
           echo "CXFLOW_SCA_MANIFEST_FAILURE=" >> "$GITHUB_ENV"
         fi
-
 
     - name: Setup App Name
       shell: bash
@@ -226,6 +267,7 @@ runs:
         echo "CXFLOW_EVENT_PARAMS=${{ inputs.push-cxflow-params }}" >> "$GITHUB_ENV"
         echo "PROPER_BRANCH_NAME=${{ github.ref_name }}" >> "$GITHUB_ENV"
 
+
     - name: Set project name
       shell: bash
       run: |
@@ -261,15 +303,6 @@ runs:
       if: inputs.scaresolver-tag != '' || inputs.build-container-tag != ''
       uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226
 
-    - name: Set Temp Paths
-      shell: bash
-      run: |
-        RESOLVER=$(mktemp -d -p "$GITHUB_ACTION_PATH")
-        echo "RESOLVER_PATH=$RESOLVER" >> "$GITHUB_ENV"
-
-        TOOLKIT=$(mktemp -d -p "$GITHUB_ACTION_PATH")
-        echo "TOOLKIT_PATH=$TOOLKIT" >> "$GITHUB_ENV"
-
 
     - name: Import custom certs
       if: inputs.custom-ca-path != ''
@@ -292,8 +325,6 @@ runs:
           done
         fi
 
-
-
     - name: Set SCAResolver parameters for scaresolver-tag
       shell: bash
       if: inputs.scaresolver-tag != ''
@@ -306,8 +337,12 @@ runs:
       shell: bash
       if: inputs.scaresolver-tag == ''
       run: |
-        wget -q -O ${{ env.TOOLKIT_PATH }}/build-environment.zip https://github.com/checkmarx-ts/cx-supply-chain-toolkit/releases/latest/download/build-environment.zip
-        unzip ${{ env.TOOLKIT_PATH }}/build-environment.zip -d ${{ env.TOOLKIT_PATH }}
+        java -jar ${{ env.PSCICDTOOLS_PATH }}/archive-downloader.jar \
+          --url https://github.com/checkmarx-ts/cx-supply-chain-toolkit/releases/latest/download/build-environment.zip \
+          --outdir "${{ env.TOOLKIT_PATH }}" --unzip
+
+        # wget -q -O ${{ env.TOOLKIT_PATH }}/build-environment.zip https://github.com/checkmarx-ts/cx-supply-chain-toolkit/releases/latest/download/build-environment.zip
+        # unzip ${{ env.TOOLKIT_PATH }}/build-environment.zip -d ${{ env.TOOLKIT_PATH }}
 
     - name: Set SCAResolver parameters for runner execution
       shell: bash
@@ -331,8 +366,9 @@ runs:
       id: sarif-path-gen
       shell: bash
       run: |
-        echo "SARIF_FILE=${{ env.CXFLOW_FOLDER }}/${{ github.run_id }}.sarif" >> "$GITHUB_ENV"
-        echo "sarif-path=${{ env.CXFLOW_FOLDER }}/${{ github.run_id }}.sarif" >> "$GITHUB_OUTPUT"
+        SARIF_FILE=$(dirname ${{ env.CXFLOW_JAR_FOLDER }})/${{ github.run_id }}.sarif
+        echo "SARIF_FILE=$SARIF_FILE" >> "$GITHUB_ENV"
+        echo "sarif-path=$SARIF_FILE" >> "$GITHUB_OUTPUT"
 
 
     - name: Enable Scanners
@@ -364,7 +400,7 @@ runs:
         set +e
 
         java ${{ inputs.java-opts }} ${{ inputs.java-props }} ${{ inputs.spring-props }} \
-          -jar ${{ env.CXFLOW_FOLDER }}/${{ env.CXFLOW_JAR}} \
+          -jar ${{ env.CXFLOW_JAR_PATH}} \
           ${{ env.CONFIG_PARAM }} \
           --scan --f=. \
           ${{ env.SCA_RESOLVER_CONFIG }} \
@@ -398,7 +434,7 @@ runs:
       if: env.CXFLOW_FEEDBACK_CHANNEL == 'Sarif' && inputs.delete-sarif-file == 'true'
       shell: bash
       run: |
-        [[ -f "${{ env.SARIF_FILE }}" ]] && rm -f ${{ env.SARIF_FILE }} || :
+        [[ -f "${{ env.SARIF_FILE }}" ]] && rm -f $(dirname ${{ env.SARIF_FILE }}) || :
 
 
     - name: Finalize on Success
@@ -412,6 +448,7 @@ runs:
       run: |
         [ -d ${{ env.RESOLVER_PATH }} ] && rm -rf ${{ env.RESOLVER_PATH }} || :
         [ -d ${{ env.TOOLKIT_PATH }} ] && rm -rf ${{ env.TOOLKIT_PATH }} || :
+        [ -d ${{ env.PSCICDTOOLS_PATH }} ] && rm -rf ${{ env.PSCICDTOOLS_PATH }} || :
     
     
 
