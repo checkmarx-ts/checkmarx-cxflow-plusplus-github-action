@@ -151,7 +151,7 @@ runs:
       shell: bash
       run: |
 
-        CXFLOW_DOWNLOAD_OPTS=--skip --outdir "$GITHUB_ACTION_PATH/cx-flow"
+        CXFLOW_DOWNLOAD_OPTS="--skip --outdir "$GITHUB_ACTION_PATH/cx-flow""
 
         if [ "${{ inputs.cxflow-version }}" == "latest" ]; then
           CXFLOW_JAR_PATH=$(java -jar ${{ env.PSCICDTOOLS_PATH }}/cxflow-downloader.jar --latest $CXFLOW_DOWNLOAD_OPTS)
