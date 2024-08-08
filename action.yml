@@ -161,7 +161,7 @@ runs:
 
         echo "CXFLOW_JAR_PATH=$CXFLOW_JAR_PATH" >> "$GITHUB_ENV"
 
-        echo Using CxFlow JAR: $CXFLOW_JAR
+        echo Using CxFlow JAR: $CXFLOW_JAR_PATH
         
 
 
@@ -366,7 +366,7 @@ runs:
       id: sarif-path-gen
       shell: bash
       run: |
-        SARIF_FILE=$(dirname ${{ env.CXFLOW_JAR_FOLDER }})/${{ github.run_id }}.sarif
+        SARIF_FILE=$(dirname ${{ env.CXFLOW_JAR_PATH }})/${{ github.run_id }}.sarif
         echo "SARIF_FILE=$SARIF_FILE" >> "$GITHUB_ENV"
         echo "sarif-path=$SARIF_FILE" >> "$GITHUB_OUTPUT"
 
