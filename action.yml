@@ -321,10 +321,7 @@ runs:
         RESOLVER=$(java -jar ${{ env.PSCICDTOOLS_PATH }}/archive-downloader.jar --resolver --outdir "${{ env.RESOLVER_PATH }}")
         echo "SCA_RESOLVER_CONFIG=--sca.enable-sca-resolver=true --sca.path-to-sca-resolver='$RESOLVER'" >> "$GITHUB_ENV"
 
-        $RESOLVER/ScaResolver -- version
-
-        echo RESOLVER: $RESOLVER
-        ls -l $RESOLVER
+        $RESOLVER/ScaResolver --version
 
     - shell: bash
       if: inputs.scaresolver-tag == '' && inputs.build-container-tag != ''
