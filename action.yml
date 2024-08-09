@@ -128,9 +128,9 @@ runs:
         distribution: 'corretto'
         java-version: '17'
 
-    - name: Set Temp Paths
-      shell: bash
+    - shell: bash
       run: |
+        : Set Temp Paths
         RESOLVER=$(mktemp -d -p "$GITHUB_ACTION_PATH")
         echo "RESOLVER_PATH=$RESOLVER" >> "$GITHUB_ENV"
 
@@ -140,16 +140,16 @@ runs:
         PSCICDTOOLS=$(mktemp -d -p "$GITHUB_ACTION_PATH")
         echo "PSCICDTOOLS_PATH=$PSCICDTOOLS" >> "$GITHUB_ENV"
 
-    - name: Download PS CI/CD Tools
-      shell: bash
+    - shell: bash
       run: |
+        : Download PS CI/CD Tools
         wget -q -O ${{ env.PSCICDTOOLS_PATH }}/cxflow-downloader.jar https://github.com/checkmarx-ts/ps-cicd-tools/releases/latest/download/cxflow-downloader.jar
         wget -q -O ${{ env.PSCICDTOOLS_PATH }}/archive-downloader.jar https://github.com/checkmarx-ts/ps-cicd-tools/releases/latest/download/archive-downloader.jar
 
-    - name: Download CxFlow
-      if: inputs.cxflow-jar-path == ''
+    - if: inputs.cxflow-jar-path == ''
       shell: bash
       run: |
+        : Download CxFlow
 
         CXFLOW_DOWNLOAD_OPTS="--skip --outdir "$GITHUB_ACTION_PATH/cx-flow""
 
@@ -162,51 +162,6 @@ runs:
         echo "CXFLOW_JAR_PATH=$CXFLOW_JAR_PATH" >> "$GITHUB_ENV"
 
         echo Using CxFlow JAR: $CXFLOW_JAR_PATH
-        
-
-
-    # - name: Resolve CxFlow
-    #   if: inputs.cxflow-jar-path == ''
-    #   shell: bash
-    #   run: | 
-
-    #     if [ "${{ inputs.cxflow-version }}" == "latest" ]; then
-    #       CXFLOW_JAR=$(curl -s https://api.github.com/repos/checkmarx-ltd/cx-flow/releases/latest | \
-    #         jq ".assets[].browser_download_url" | \
-    #         sed -r 's/.?http.*\/(.+\.jar).?$/\1/g')
-
-    #       CXFLOW_VERSION=$(echo $CXFLOW_JAR | sed -r 's/cx-flow-(.+).jar/\1/g')
-    #     else
-    #       CXFLOW_VERSION=${{ inputs.cxflow-version }}
-    #       CXFLOW_JAR=$(curl -s https://api.github.com/repos/checkmarx-ltd/cx-flow/releases | \
-    #         jq ".[].assets[].browser_download_url" | \
-    #         grep -E "$CXFLOW_VERSION(-java11)?.jar" | \
-    #         head -n 1 | \
-    #         sed -r 's/.?http.*\/(.+(-java11)?.jar).?$/\1/g')
-
-    #     fi
-
-    #     echo "CXFLOW_VERSION=$CXFLOW_VERSION" >> "$GITHUB_ENV"
-    #     echo "CXFLOW_JAR=$CXFLOW_JAR" >> "$GITHUB_ENV"
-    #     echo "CXFLOW_FOLDER=$(realpath ../cxflow-$GITHUB_REPOSITORY_OWNER)" >> "$GITHUB_ENV"
-    #     echo Using CxFlow JAR: $CXFLOW_JAR
-
-
-    # - name: Downloading CxFlow
-    #   shell: bash
-    #   if: inputs.cxflow-jar-path == ''
-    #   run: |
-    #     [[ ! -d "${{ env.CXFLOW_FOLDER }}" ]] && mkdir ${{ env.CXFLOW_FOLDER }} || :
-    #     [[ ! -f  ${{ env.CXFLOW_FOLDER }}/${{ env.CXFLOW_JAR}} ]] && wget -q -O ${{ env.CXFLOW_FOLDER }}/${{ env.CXFLOW_JAR}} \
-    #     https://github.com/checkmarx-ltd/cx-flow/releases/download/${{ env.CXFLOW_VERSION }}/${{ env.CXFLOW_JAR }} || :
-
-
-    # - name: Set CxFlow jar location environment variables
-    #   shell: bash
-    #   if: inputs.cxflow-jar-path != ''
-    #   run: |
-    #     echo "CXFLOW_FOLDER=$(dirname $(realpath ${{ inputs.cxflow-jar-path }}) )" >> "$GITHUB_ENV"
-    #     echo "CXFLOW_JAR=$(basename ${{ inputs.cxflow-jar-path }})" >> "$GITHUB_ENV"
 
     - name: Set CxFlow jar location environment variables
       shell: bash
@@ -447,7 +402,7 @@ runs:
         if [ ${{ env.CXFLOW_RESULT }} -eq 10 -a "${{ inputs.break-on-manifest-failure}}" == "true" ]; then
           cat $GITHUB_ACTION_PATH/sca-error.txt
         fi
-        
+
         exit ${{ env.CXFLOW_RESULT }}
 
     - name: Cleanup
