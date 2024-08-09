@@ -142,7 +142,7 @@ runs:
 
     - shell: bash
       run: |
-        : Download PS CI/CD Tools (https://github.com/checkmarx-ts/ps-cicd-tools)
+        : Download PS CI/CD Tools https://github.com/checkmarx-ts/ps-cicd-tools
 
         wget -q -O ${{ env.PSCICDTOOLS_PATH }}/cxflow-downloader.jar https://github.com/checkmarx-ts/ps-cicd-tools/releases/latest/download/cxflow-downloader.jar
         wget -q -O ${{ env.PSCICDTOOLS_PATH }}/archive-downloader.jar https://github.com/checkmarx-ts/ps-cicd-tools/releases/latest/download/archive-downloader.jar
@@ -150,7 +150,7 @@ runs:
     - if: inputs.cxflow-jar-path == ''
       shell: bash
       run: |
-        : Download CxFlow (https://github.com/checkmarx-ltd/cx-flow)
+        : Download CxFlow https://github.com/checkmarx-ltd/cx-flow
 
         CXFLOW_DOWNLOAD_OPTS="--skip --outdir "$GITHUB_ACTION_PATH/cx-flow""
 
@@ -283,7 +283,7 @@ runs:
     - shell: bash
       if: inputs.scaresolver-tag == ''
       run: |
-        : Download Supply Chain Toolkit (https://github.com/checkmarx-ts/cx-supply-chain-toolkit)
+        : Download Supply Chain Toolkit https://github.com/checkmarx-ts/cx-supply-chain-toolkit
 
         java -jar ${{ env.PSCICDTOOLS_PATH }}/archive-downloader.jar \
           --url https://github.com/checkmarx-ts/cx-supply-chain-toolkit/releases/latest/download/build-environment.zip \
@@ -426,7 +426,7 @@ runs:
       shell: bash
       run: |
         : Cleanup temp directories
-        
+
         [ -d ${{ env.RESOLVER_PATH }} ] && rm -rf ${{ env.RESOLVER_PATH }} || :
         [ -d ${{ env.TOOLKIT_PATH }} ] && rm -rf ${{ env.TOOLKIT_PATH }} || :
         [ -d ${{ env.PSCICDTOOLS_PATH }} ] && rm -rf ${{ env.PSCICDTOOLS_PATH }} || :
