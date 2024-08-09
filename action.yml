@@ -317,11 +317,11 @@ runs:
       run: |
         : Set SCAResolver parameters for runner execution
 
-        java -jar ${{ env.PSCICDTOOLS_PATH }}/archive-downloader.jar
-
         # RESOLVER=$( "${{ env.TOOLKIT_PATH }}"/download_resolver.sh "${{ env.RESOLVER_PATH }}")
         RESOLVER=$(java -jar ${{ env.PSCICDTOOLS_PATH }}/archive-downloader.jar --resolver --outdir "${{ env.RESOLVER_PATH }}")
         echo "SCA_RESOLVER_CONFIG=--sca.enable-sca-resolver=true --sca.path-to-sca-resolver='$RESOLVER'" >> "$GITHUB_ENV"
+
+        $RESOLVER/ScaResolver -- version
 
         echo RESOLVER: $RESOLVER
         ls -l $RESOLVER
