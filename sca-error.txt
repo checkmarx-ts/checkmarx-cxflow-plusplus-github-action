@@ -1,0 +1,25 @@
+:'######:::'######:::::'###:::::::'########:'########::'########:::'#######::'########::'####:
+'##... ##:'##... ##:::'## ##:::::: ##.....:: ##.... ##: ##.... ##:'##.... ##: ##.... ##: ####:
+ ##:::..:: ##:::..:::'##:. ##::::: ##::::::: ##:::: ##: ##:::: ##: ##:::: ##: ##:::: ##: ####:
+. ######:: ##:::::::'##:::. ##:::: ######::: ########:: ########:: ##:::: ##: ########::: ##::
+:..... ##: ##::::::: #########:::: ##...:::: ##.. ##::: ##.. ##::: ##:::: ##: ##.. ##::::..:::
+'##::: ##: ##::: ##: ##.... ##:::: ##::::::: ##::. ##:: ##::. ##:: ##:::: ##: ##::. ##::'####:
+. ######::. ######:: ##:::: ##:::: ########: ##:::. ##: ##:::. ##:. #######:: ##:::. ##: ####:
+:......::::......:::..:::::..:::::........::..:::::..::..:::::..:::.......:::..:::::..::....::
+
+THE CXFLOW EXIT CODE INDICATES AN ERROR WITH SCA RESOLVER
+
+The configuration option for "break-on-manifest-failure" is currently TRUE, which
+may mean you are trying to run dependency resolution in an environment that does
+not have the correct build tooling installed or may have network connection
+problems reaching the required package repositories.
+
+Some things to check:
+
+1. If you are using private packages and running in a GitHub hosted runner, the
+   network connection to the private package repo may not work.  Use a self-hosted
+   runner.
+
+2. Add a stage in the same job that is running this action to dump the dependency tree.
+   This will test that the proper build tooling exists and that it is properly configured.  
+   If the dependency tree dump fails, SCA Resolver will also be likely to fail.

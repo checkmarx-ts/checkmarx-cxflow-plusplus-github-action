@@ -320,8 +320,6 @@ runs:
           --url https://github.com/checkmarx-ts/cx-supply-chain-toolkit/releases/latest/download/build-environment.zip \
           --outdir "${{ env.TOOLKIT_PATH }}" --unzip
 
-        ls -lR ${{ env.TOOLKIT_PATH }}
-
         # wget -q -O ${{ env.TOOLKIT_PATH }}/build-environment.zip https://github.com/checkmarx-ts/cx-supply-chain-toolkit/releases/latest/download/build-environment.zip
         # unzip ${{ env.TOOLKIT_PATH }}/build-environment.zip -d ${{ env.TOOLKIT_PATH }}
 
@@ -354,6 +352,7 @@ runs:
         RESOLVER=$( "${{ env.TOOLKIT_PATH }}"/download_resolver.sh "${{ env.RESOLVER_PATH }}")
         echo "SCA_RESOLVER_CONFIG=--sca.enable-sca-resolver=true --sca.path-to-sca-resolver='$RESOLVER'" >> "$GITHUB_ENV"
 
+        echo RESOLVER: $RESOLVER
         ls -l $RESOLVER
 
     - name: Set SCAResolver parameters for autobuild execution
@@ -427,9 +426,8 @@ runs:
 
         echo "CXFLOW_RESULT=$?" >> "$GITHUB_ENV"
 
-
     - name: Upload Sarif Results
-      if: inputs.upload-sarif-file == 'true' && env.CXFLOW_FEEDBACK_CHANNEL == 'Sarif' && (inputs.disable-sast-scan == 'false' || inputs.disable-sca-scan == 'false')
+      if: env.CXFLOW_RESULT == 0 && inputs.upload-sarif-file == 'true' && env.CXFLOW_FEEDBACK_CHANNEL == 'Sarif' && (inputs.disable-sast-scan == 'false' || inputs.disable-sca-scan == 'false')
       uses: github/codeql-action/upload-sarif@b611370bb5703a7efb587f9d136a52ea24c5c38c
       with:
         sarif_file: ${{ env.SARIF_FILE }}
@@ -445,7 +443,12 @@ runs:
     - name: Finalize on Success
       if: ${{ !cancelled() }}
       shell: bash
-      run: exit ${{ env.CXFLOW_RESULT }}
+      run: |
+        if [ ${{ env.CXFLOW_RESULT }} -eq 10 -a "${{ inputs.break-on-manifest-failure}}" == "true" ]; then
+          cat $GITHUB_ACTION_PATH/sca-error.txt
+        fi
+        
+        exit ${{ env.CXFLOW_RESULT }}
 
     - name: Cleanup
       if: always()
