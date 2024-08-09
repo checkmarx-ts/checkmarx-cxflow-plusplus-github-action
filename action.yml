@@ -408,7 +408,7 @@ runs:
       shell: bash
       run: |
         : Remove Sarif File
-        [[ -f "${{ env.SARIF_FILE }}" ]] && rm -f $(dirname ${{ env.SARIF_FILE }}) || :
+        [[ -f "${{ env.SARIF_FILE }}" ]] && rm -f ${{ env.SARIF_FILE }} || :
 
 
     - if: ${{ !cancelled() }}
