@@ -142,14 +142,15 @@ runs:
 
     - shell: bash
       run: |
-        : Download PS CI/CD Tools
+        : Download PS CI/CD Tools (https://github.com/checkmarx-ts/ps-cicd-tools)
+
         wget -q -O ${{ env.PSCICDTOOLS_PATH }}/cxflow-downloader.jar https://github.com/checkmarx-ts/ps-cicd-tools/releases/latest/download/cxflow-downloader.jar
         wget -q -O ${{ env.PSCICDTOOLS_PATH }}/archive-downloader.jar https://github.com/checkmarx-ts/ps-cicd-tools/releases/latest/download/archive-downloader.jar
 
     - if: inputs.cxflow-jar-path == ''
       shell: bash
       run: |
-        : Download CxFlow
+        : Download CxFlow (https://github.com/checkmarx-ltd/cx-flow)
 
         CXFLOW_DOWNLOAD_OPTS="--skip --outdir "$GITHUB_ACTION_PATH/cx-flow""
 
@@ -163,15 +164,17 @@ runs:
 
         echo Using CxFlow JAR: $CXFLOW_JAR_PATH
 
-    - name: Set CxFlow jar location environment variables
-      shell: bash
+    - shell: bash
       if: inputs.cxflow-jar-path != ''
       run: |
+        : Set CxFlow jar location environment variables
+
         echo "CXFLOW_JAR_PATH=$(realpath ${{ inputs.cxflow-jar-path }})" >> "$GITHUB_ENV"
 
-    - name: Configure Resolve Manifest Failure Break
-      shell: bash
-      run: | 
+    - shell: bash
+      run: |
+        : Configure Resolve Manifest Failure Break
+
         if [ "${{ inputs.break-on-manifest-failure}}" == "true" ]; then
           echo SCA Resolver manifest failures are set to break the build.
           echo "CXFLOW_SCA_MANIFEST_FAILURE='--sca.sca-resolver-add-parameters.break-on-manifest-failure'" >> "$GITHUB_ENV"
@@ -180,9 +183,9 @@ runs:
           echo "CXFLOW_SCA_MANIFEST_FAILURE=" >> "$GITHUB_ENV"
         fi
 
-    - name: Setup App Name
-      shell: bash
+    - shell: bash
       run: |
+        : Setup App Name
 
         if [ "${{ inputs.app-name }}" == "" ]; then
           echo "APPNAME=$GITHUB_REPOSITORY" >> "$GITHUB_ENV"
@@ -190,42 +193,47 @@ runs:
           echo "APPNAME=${{ inputs.app-name }}" >> "$GITHUB_ENV"        
         fi
 
-    - name: Use custom config YAML 
-      shell: bash
+    - shell: bash
       if: inputs.application-yaml-path != ''
       run: |
+        : Use custom config YAML
+
         echo "CONFIG_PARAM=--spring.config.location='${{ inputs.application-yaml-path }}'" >> "$GITHUB_ENV"
 
 
-    - name: Use default config YAML 
-      shell: bash
+    - shell: bash
       if: inputs.application-yaml-path == ''
       run: |
+        : Use default config YAML
+
         echo "CONFIG_PARAM=--spring.config.location='$GITHUB_ACTION_PATH/cxflow-defaults.yml'" >> "$GITHUB_ENV"
 
-    - name: Set params for PR
-      shell: bash
+    - shell: bash
       if: github.event_name == 'pull_request'
       run: |
+        : Set params for PR
+
         echo "CXFLOW_FEEDBACK_CHANNEL=${{ inputs.pull-request-feedback-channel }}" >> "$GITHUB_ENV"
         echo "CXFLOW_FEEDBACK_PARAMS=--bug-tracker='${{ inputs.pull-request-feedback-channel }}' --merge-id='${{ github.event.number }}'" >> "$GITHUB_ENV"
         echo "CXFLOW_EVENT_PARAMS=${{ inputs.pull-request-cxflow-params }}" >> "$GITHUB_ENV"
         echo "PROPER_BRANCH_NAME=${{ github.head_ref }}" >> "$GITHUB_ENV"
 
 
-    - name: Set params for push
-      shell: bash
+    - shell: bash
       if: github.event_name != 'pull_request'
       run: |
+        : Set params for push
+
         echo "CXFLOW_FEEDBACK_CHANNEL=${{ inputs.push-feedback-channel }}" >> "$GITHUB_ENV"
         echo "CXFLOW_FEEDBACK_PARAMS=--bug-tracker='${{ inputs.push-feedback-channel }}'" >> "$GITHUB_ENV"
         echo "CXFLOW_EVENT_PARAMS=${{ inputs.push-cxflow-params }}" >> "$GITHUB_ENV"
         echo "PROPER_BRANCH_NAME=${{ github.ref_name }}" >> "$GITHUB_ENV"
 
 
-    - name: Set project name
-      shell: bash
+    - shell: bash
       run: |
+        : Set project name
+
         if [ "${{ inputs.project-name }}" == "" ]; then
           PROJECT_NAME="$GITHUB_REPOSITORY-{branch}"
         else
@@ -235,15 +243,19 @@ runs:
         PROJECT_NAME=$(echo $PROJECT_NAME | sed -E "s/(.*)(\{branch\})(.*)/\1${{ env.PROPER_BRANCH_NAME }}\3/")
         echo "PROJECT_NAME=$PROJECT_NAME" >> "$GITHUB_ENV"
 
-    - name: Set log level
-      shell: bash
-      run: echo "CXFLOW_LOGLEVEL_PARAMS=--logging.level.com.checkmarx='${{ inputs.sast-log-level }}'" >> "$GITHUB_ENV"
+    - shell: bash
+      run: |
+        : Set log level
+
+        echo "CXFLOW_LOGLEVEL_PARAMS=--logging.level.com.checkmarx='${{ inputs.sast-log-level }}'" >> "$GITHUB_ENV"
 
 
-    - name: Set wire trace
-      if: inputs.enable-wire-trace == 'true'
+    - if: inputs.enable-wire-trace == 'true'
       shell: bash
-      run: echo "WIRE_TRACE_PARAMS=--logging.level.org.apache.http.wire=TRACE" >> "$GITHUB_ENV"
+      run: |
+        : Set wire trace
+
+        echo "WIRE_TRACE_PARAMS=--logging.level.org.apache.http.wire=TRACE" >> "$GITHUB_ENV"
 
 
     - name: Container Registry Login
@@ -259,30 +271,30 @@ runs:
       uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226
 
 
-    - name: Set SCAResolver parameters for scaresolver-tag
-      shell: bash
+    - shell: bash
       if: inputs.scaresolver-tag != ''
       run: |
+        : Set SCAResolver parameters for scaresolver-tag
+
         echo "CONTAINER_TAG=${{ inputs.scaresolver-tag }}" >> "$GITHUB_ENV"
         cp $GITHUB_ACTION_PATH/ScaResolver "${{ env.RESOLVER_PATH }}"
         echo "SCA_RESOLVER_CONFIG=--sca.enable-sca-resolver=true --sca.path-to-sca-resolver='${{ env.RESOLVER_PATH }}'" >> "$GITHUB_ENV"
 
-    - name: Download Supply Chain Toolkit
-      shell: bash
+    - shell: bash
       if: inputs.scaresolver-tag == ''
       run: |
+        : Download Supply Chain Toolkit (https://github.com/checkmarx-ts/cx-supply-chain-toolkit)
+
         java -jar ${{ env.PSCICDTOOLS_PATH }}/archive-downloader.jar \
           --url https://github.com/checkmarx-ts/cx-supply-chain-toolkit/releases/latest/download/build-environment.zip \
           --outdir "${{ env.TOOLKIT_PATH }}" --unzip
 
-        # wget -q -O ${{ env.TOOLKIT_PATH }}/build-environment.zip https://github.com/checkmarx-ts/cx-supply-chain-toolkit/releases/latest/download/build-environment.zip
-        # unzip ${{ env.TOOLKIT_PATH }}/build-environment.zip -d ${{ env.TOOLKIT_PATH }}
 
-
-    - name: Import custom CA certs
-      if: inputs.custom-ca-path != ''
+    - if: inputs.custom-ca-path != ''
       shell: bash
       run: |
+        : Import custom CA certs
+
         if [ -f "${{ inputs.custom-ca-path }}" ];
         then
           keytool -importcert -cacerts -storepass changeit -noprompt -file "${{ inputs.custom-ca-path }}"
@@ -300,20 +312,22 @@ runs:
           done
         fi
 
-    - name: Set SCAResolver parameters for runner execution
-      shell: bash
+    - shell: bash
       if: inputs.scaresolver-tag == '' && inputs.build-container-tag == ''
       run: |
+        : Set SCAResolver parameters for runner execution
+
         RESOLVER=$( "${{ env.TOOLKIT_PATH }}"/download_resolver.sh "${{ env.RESOLVER_PATH }}")
         echo "SCA_RESOLVER_CONFIG=--sca.enable-sca-resolver=true --sca.path-to-sca-resolver='$RESOLVER'" >> "$GITHUB_ENV"
 
         echo RESOLVER: $RESOLVER
         ls -l $RESOLVER
 
-    - name: Set SCAResolver parameters for autobuild execution
-      shell: bash
+    - shell: bash
       if: inputs.scaresolver-tag == '' && inputs.build-container-tag != ''
       run: |
+        : Set SCAResolver parameters for autobuild execution
+
         CONTAINER_TAG=$(${{ env.TOOLKIT_PATH }}/autobuild.sh -t "${{ inputs.build-container-tag }}" -d "${{ env.TOOLKIT_PATH }}" -u -g -a "--load")
         echo "CONTAINER_TAG=$CONTAINER_TAG" >> "$GITHUB_ENV"
 
@@ -321,26 +335,26 @@ runs:
         echo "SCA_RESOLVER_CONFIG=--sca.enable-sca-resolver=true --sca.path-to-sca-resolver='${{ env.RESOLVER_PATH }}'" >> "$GITHUB_ENV"
 
 
-    - name: Set Sarif File Path
-      id: sarif-path-gen
+    - id: sarif-path-gen
       shell: bash
       run: |
+        : Set Sarif File Path
+
         SARIF_FILE=$(dirname ${{ env.CXFLOW_JAR_PATH }})/${{ github.run_id }}.sarif
         echo "SARIF_FILE=$SARIF_FILE" >> "$GITHUB_ENV"
         echo "sarif-path=$SARIF_FILE" >> "$GITHUB_OUTPUT"
 
 
-    - name: Enable Scanners
-      shell: bash
+    - shell: bash
       run: |
+        : Enable Scanners
         SCANNERS=""
         [[ "${{ inputs.disable-sast-scan }}" == "false" ]] && SCANNERS="sast," || :
         [[ "${{ inputs.disable-sca-scan }}" == "false" ]] && SCANNERS="${SCANNERS}sca" || :
         echo "SCANNER_CONFIG=--cx-flow.enabled-vulnerability-scanners='${SCANNERS}'" >> "$GITHUB_ENV"
 
 
-    - name: Orchestrate scans with CxFlow
-      if: inputs.disable-sast-scan == 'false' || inputs.disable-sca-scan == 'false'
+    - if: inputs.disable-sast-scan == 'false' || inputs.disable-sca-scan == 'false'
       shell: bash
       env:
         CHECKMARX_BASE_URL: ${{ inputs.sast-url }}
@@ -356,6 +370,8 @@ runs:
         GITHUB_APIURL: ${{ github.api_url }}/repos
         GITHUB_URL: ${{ github.server_url }}
       run: |
+        : Orchestrate scans with CxFlow
+
         set +e
 
         java ${{ inputs.java-opts }} ${{ inputs.java-props }} ${{ inputs.spring-props }} \
@@ -388,27 +404,29 @@ runs:
         sarif_file: ${{ env.SARIF_FILE }}
 
 
-    - name: Remove Sarif File
-      if: env.CXFLOW_FEEDBACK_CHANNEL == 'Sarif' && inputs.delete-sarif-file == 'true'
+    - if: env.CXFLOW_FEEDBACK_CHANNEL == 'Sarif' && inputs.delete-sarif-file == 'true'
       shell: bash
       run: |
+        : Remove Sarif File
         [[ -f "${{ env.SARIF_FILE }}" ]] && rm -f $(dirname ${{ env.SARIF_FILE }}) || :
 
 
-    - name: Finalize on Success
-      if: ${{ !cancelled() }}
+    - if: ${{ !cancelled() }}
       shell: bash
       run: |
+        : Finalize Execution
+
         if [ ${{ env.CXFLOW_RESULT }} -eq 10 -a "${{ inputs.break-on-manifest-failure}}" == "true" ]; then
           cat $GITHUB_ACTION_PATH/sca-error.txt
         fi
 
         exit ${{ env.CXFLOW_RESULT }}
 
-    - name: Cleanup
-      if: always()
+    - if: always()
       shell: bash
       run: |
+        : Cleanup temp directories
+        
         [ -d ${{ env.RESOLVER_PATH }} ] && rm -rf ${{ env.RESOLVER_PATH }} || :
         [ -d ${{ env.TOOLKIT_PATH }} ] && rm -rf ${{ env.TOOLKIT_PATH }} || :
         [ -d ${{ env.PSCICDTOOLS_PATH }} ] && rm -rf ${{ env.PSCICDTOOLS_PATH }} || :
