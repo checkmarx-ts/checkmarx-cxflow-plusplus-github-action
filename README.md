@@ -46,7 +46,7 @@ jobs:
             uses: actions/checkout@v4
         
           - name: Execute Scan
-            uses: checkmarx-ts/checkmarx-cxflow-plusplus-github-action@v2
+            uses: checkmarx-ts/checkmarx-cxflow-plusplus-github-action@v3
             with:
                 sast-url: ${{ vars.CX_SAST_URL }}
                 sast-username: ${{ secrets.CX_SAST_USERNAME }}
